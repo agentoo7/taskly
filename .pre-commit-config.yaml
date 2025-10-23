@@ -1,0 +1,90 @@
+# Pre-commit hooks configuration for Taskly
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # Backend Python hooks
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.14
+    hooks:
+      - id: ruff
+        name: Ruff Linter (Python)
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+
+  - repo: https://github.com/psf/black
+    rev: 24.1.1
+    hooks:
+      - id: black
+        name: Black Formatter (Python)
+        language_version: python3.11
+        files: ^backend/
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        name: MyPy Type Checker (Python)
+        files: ^backend/
+        additional_dependencies: [types-all]
+        args: [--config-file=backend/pyproject.toml]
+
+  # Frontend TypeScript/JavaScript hooks
+  - repo: https://github.com/pre-commit/mirrors-eslint
+    rev: v8.56.0
+    hooks:
+      - id: eslint
+        name: ESLint (TypeScript/JavaScript)
+        files: ^frontend/.*\.(js|jsx|ts|tsx)$
+        types: [file]
+        additional_dependencies:
+          - eslint@8.56.0
+          - eslint-config-next@14.1.0
+          - eslint-plugin-jsx-a11y@6.8.0
+          - "@typescript-eslint/parser@6.19.0"
+          - "@typescript-eslint/eslint-plugin@6.19.0"
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v3.2.4
+    hooks:
+      - id: prettier
+        name: Prettier Formatter (TypeScript/JavaScript)
+        files: ^frontend/
+        types_or: [javascript, jsx, ts, tsx, json, css, markdown]
+        additional_dependencies:
+          - prettier@3.2.4
+          - prettier-plugin-tailwindcss@0.5.11
+
+  # TypeScript type checking
+  - repo: https://github.com/pre-commit/mirrors-typescript
+    rev: v5.3.3
+    hooks:
+      - id: typescript
+        name: TypeScript Compiler
+        files: ^frontend/
+        types: [ts, tsx]
+        args: [--noEmit, --project, frontend/tsconfig.json]
+
+  # Common hooks for all files
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: Trim Trailing Whitespace
+      - id: end-of-file-fixer
+        name: Fix End of Files
+      - id: check-yaml
+        name: Check YAML Syntax
+        args: [--safe]
+      - id: check-json
+        name: Check JSON Syntax
+      - id: check-added-large-files
+        name: Check for Large Files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+        name: Check for Merge Conflicts
+      - id: detect-private-key
+        name: Detect Private Keys
+      - id: mixed-line-ending
+        name: Fix Mixed Line Endings
+        args: [--fix=lf]
