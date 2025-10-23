@@ -73,3 +73,5 @@ coverage/
 .cache
 *.orig
 *.rej
+
+backend/.mypy_cache
