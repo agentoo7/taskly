@@ -7,11 +7,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 from app.core.config import settings
 
-# Create async engine
+# Create async engine with connection pooling
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
     future=True,
+    pool_size=20,
+    max_overflow=10,
+    pool_pre_ping=True,  # Verify connections before using
 )
 
 # Create async session factory
@@ -41,3 +44,13 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             raise
         finally:
             await session.close()
+
+
+async def check_db_health() -> bool:
+    """Check database connection health."""
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute("SELECT 1")
+            return True
+    except Exception:
+        return False
