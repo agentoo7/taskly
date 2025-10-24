@@ -2,8 +2,7 @@
  * API client with automatic token management and refresh logic.
  */
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean
@@ -34,7 +33,7 @@ class ApiClient {
   }
 
   /**
-   * Store tokens in localStorage.
+   * Store tokens in localStorage and cookies.
    */
   private setTokens(accessToken: string, refreshToken?: string): void {
     if (typeof window === 'undefined') return
@@ -42,15 +41,25 @@ class ApiClient {
     if (refreshToken) {
       localStorage.setItem('refresh_token', refreshToken)
     }
+
+    // Set cookies for middleware
+    document.cookie = `access_token=${accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
+    if (refreshToken) {
+      document.cookie = `refresh_token=${refreshToken}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
+    }
   }
 
   /**
-   * Clear tokens from localStorage.
+   * Clear tokens from localStorage and cookies.
    */
   private clearTokens(): void {
     if (typeof window === 'undefined') return
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
+
+    // Clear cookies
+    document.cookie = 'access_token=; path=/; max-age=0'
+    document.cookie = 'refresh_token=; path=/; max-age=0'
   }
 
   /**
@@ -102,18 +111,15 @@ class ApiClient {
   /**
    * Make an API request with automatic token injection and refresh logic.
    */
-  async request<T>(
-    endpoint: string,
-    options: RequestOptions = {}
-  ): Promise<T> {
+  async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     const { skipAuth = false, headers = {}, ...restOptions } = options
 
     const url = `${this.baseUrl}${endpoint}`
 
     // Build headers
-    const requestHeaders: HeadersInit = {
+    const requestHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...headers,
+      ...(headers as Record<string, string>),
     }
 
     // Add Authorization header if not skipping auth
@@ -154,9 +160,7 @@ class ApiClient {
     // Handle non-OK responses
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(
-        errorData.detail || `Request failed with status ${response.status}`
-      )
+      throw new Error(errorData.detail || `Request failed with status ${response.status}`)
     }
 
     // Parse and return response
@@ -173,11 +177,7 @@ class ApiClient {
   /**
    * POST request.
    */
-  async post<T>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestOptions
-  ): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'POST',
@@ -188,11 +188,7 @@ class ApiClient {
   /**
    * PUT request.
    */
-  async put<T>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestOptions
-  ): Promise<T> {
+  async put<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PUT',
@@ -203,11 +199,7 @@ class ApiClient {
   /**
    * PATCH request.
    */
-  async patch<T>(
-    endpoint: string,
-    data?: unknown,
-    options?: RequestOptions
-  ): Promise<T> {
+  async patch<T>(endpoint: string, data?: unknown, options?: RequestOptions): Promise<T> {
     return this.request<T>(endpoint, {
       ...options,
       method: 'PATCH',
