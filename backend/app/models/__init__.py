@@ -5,6 +5,7 @@ from app.models.card import Card, PriorityEnum
 from app.models.card_assignee import CardAssignee
 from app.models.git_repository import GitRepository
 from app.models.pull_request import PRStatusEnum, PullRequest
+from app.models.refresh_token import RefreshToken
 from app.models.sprint import Sprint, SprintStatusEnum
 from app.models.user import User
 from app.models.workspace import Workspace
@@ -24,4 +25,5 @@ __all__ = [
     "GitRepository",
     "PullRequest",
     "PRStatusEnum",
+    "RefreshToken",
 ]

@@ -5,9 +5,11 @@ from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import pytest_asyncio
+from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.database import Base
+from app.main import app
 from app.models import *  # noqa: F401, F403
 
 # Test database URL (use a separate test database)
@@ -51,3 +53,10 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     # Drop all tables after test
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def client() -> AsyncGenerator[AsyncClient, None]:
+    """Create an async HTTP client for testing the FastAPI app."""
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
