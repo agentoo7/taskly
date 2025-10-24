@@ -7,6 +7,8 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
+export const dynamic = 'force-dynamic'
+
 export default function LoginPage() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
@@ -27,17 +29,16 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-800 border border-red-200">
+          <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             {error === 'auth_failed' && (
               <>
-                <strong>Authentication failed.</strong> Please try again or
-                contact support if the problem persists.
+                <strong>Authentication failed.</strong> Please try again or contact support if the
+                problem persists.
               </>
             )}
             {error === 'missing_code' && (
               <>
-                <strong>Missing authorization code.</strong> Please try signing
-                in again.
+                <strong>Missing authorization code.</strong> Please try signing in again.
               </>
             )}
             {error !== 'auth_failed' && error !== 'missing_code' && (
@@ -51,7 +52,7 @@ export default function LoginPage() {
         <Button
           onClick={handleGitHubLogin}
           disabled={isLoading}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white"
+          className="w-full bg-slate-900 text-white hover:bg-slate-800"
           size="lg"
         >
           {isLoading ? (
@@ -69,13 +70,13 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-xs text-slate-500">
           By signing in, you agree to our{' '}
-          <a href="#" className="underline hover:text-slate-700">
+          <button type="button" className="underline hover:text-slate-700">
             Terms of Service
-          </a>{' '}
+          </button>{' '}
           and{' '}
-          <a href="#" className="underline hover:text-slate-700">
+          <button type="button" className="underline hover:text-slate-700">
             Privacy Policy
-          </a>
+          </button>
           .
         </p>
 

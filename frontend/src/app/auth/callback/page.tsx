@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
+export const dynamic = 'force-dynamic'
+
 export default function CallbackPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -27,6 +29,7 @@ export default function CallbackPage() {
     sessionStorage.setItem(processedKey, 'true')
 
     handleCallback(code)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, router])
 
   async function handleCallback(code: string) {
@@ -54,11 +57,15 @@ export default function CallbackPage() {
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
 
+      // Set tokens in cookies for middleware
+      document.cookie = `access_token=${data.access_token}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`
+      document.cookie = `refresh_token=${data.refresh_token}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`
+
       // Clear the OAuth code from session storage after successful processing
       sessionStorage.removeItem(`oauth_processed_${code}`)
 
-      // Redirect to workspaces (dashboard) - for now redirect to home
-      router.replace('/')
+      // Redirect to workspaces (dashboard)
+      router.replace('/workspaces')
     } catch (err) {
       console.error('Auth callback failed:', err)
       const errorMessage = err instanceof Error ? err.message : 'Authentication failed'
@@ -75,14 +82,14 @@ export default function CallbackPage() {
       <div className="text-center">
         {error ? (
           <>
-            <div className="mb-4 text-red-600 text-lg font-semibold">{error}</div>
+            <div className="mb-4 text-lg font-semibold text-red-600">{error}</div>
             <p className="text-slate-600">Redirecting to login page...</p>
           </>
         ) : (
           <>
-            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900 mx-auto" />
-            <p className="text-slate-700 text-lg font-medium">Signing you in...</p>
-            <p className="text-slate-500 text-sm mt-2">
+            <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-300 border-t-slate-900" />
+            <p className="text-lg font-medium text-slate-700">Signing you in...</p>
+            <p className="mt-2 text-sm text-slate-500">
               Please wait while we complete your authentication
             </p>
           </>

@@ -60,18 +60,12 @@ export function useAuth() {
    */
   const logout = async () => {
     const refreshToken =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('refresh_token')
-        : null
+      typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null
 
     // Call logout endpoint to revoke refresh token
     if (refreshToken) {
       try {
-        await api.post(
-          '/auth/logout',
-          { refresh_token: refreshToken },
-          { skipAuth: true }
-        )
+        await api.post('/auth/logout', { refresh_token: refreshToken }, { skipAuth: true })
       } catch (err) {
         // Log error but continue with client-side logout
         console.error('Logout endpoint error:', err)
