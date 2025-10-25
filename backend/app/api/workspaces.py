@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import check_workspace_member, get_current_user
 from app.core.database import get_db
 from app.models.user import User
+from app.schemas.audit import AuditLogResponse
 from app.schemas.workspace import (
     WorkspaceCreate,
     WorkspaceDetailResponse,
     WorkspaceResponse,
     WorkspaceUpdate,
 )
+from app.services.audit_service import AuditService
 from app.services.workspace_service import WorkspaceService
 
 router = APIRouter(prefix="/api/workspaces", tags=["workspaces"])
@@ -153,3 +155,44 @@ async def delete_workspace(
     """
     service = WorkspaceService(db)
     await service.delete_workspace(workspace_id, current_user.id)
+
+
+@router.get("/{workspace_id}/audit-logs", response_model=list[AuditLogResponse])
+async def get_workspace_audit_logs(
+    workspace_id: UUID,
+    limit: int = 50,
+    offset: int = 0,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[AuditLogResponse]:
+    """
+    Get audit logs for workspace (admin only).
+
+    Returns paginated list of all audit events for the workspace including:
+    - Invitation actions (created, accepted, revoked, resent, expired)
+    - Member actions (role changed, removed)
+
+    Args:
+        workspace_id: UUID of workspace
+        limit: Maximum number of logs to return (default 50)
+        offset: Number of logs to skip for pagination (default 0)
+        current_user: Current authenticated user (must be admin)
+        db: Database session
+
+    Returns:
+        List of audit log entries ordered by most recent first
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if not admin
+    """
+    from uuid import UUID as UUIDType
+
+    # Check admin permission
+    workspace_service = WorkspaceService(db)
+    await workspace_service._check_admin(workspace_id, UUIDType(str(current_user.id)))
+
+    # Get audit logs
+    audit_service = AuditService(db)
+    logs = await audit_service.get_workspace_audit_logs(workspace_id, limit, offset)
+
+    return [AuditLogResponse.model_validate(log) for log in logs]
