@@ -10,14 +10,24 @@ import { useParams, useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api } from '@/lib/api/client'
 import { DeleteWorkspaceModal } from '@/components/workspace/delete-workspace-modal'
+import { InviteMembersModal } from '@/components/workspace/invite-members-modal'
+import { MemberList } from '@/components/workspace/member-list'
+import { PendingInvitationsList } from '@/components/workspace/pending-invitations-list'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
+
+interface WorkspaceMember {
+  user_id: string
+  role: 'admin' | 'member'
+}
 
 interface WorkspaceDetail {
   id: string
@@ -26,7 +36,7 @@ interface WorkspaceDetail {
   created_at: string
   updated_at: string
   boards: unknown[]
-  members: unknown[]
+  members: WorkspaceMember[]
 }
 
 const schema = z.object({
@@ -41,6 +51,13 @@ export default function WorkspaceSettingsPage() {
   const queryClient = useQueryClient()
   const workspaceId = params.workspaceId as string
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+
+  // Fetch current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => api.get<{ id: string }>('/api/users/me'),
+  })
 
   const { data: workspace, isLoading } = useQuery({
     queryKey: ['workspaces', workspaceId],
@@ -58,7 +75,8 @@ export default function WorkspaceSettingsPage() {
   })
 
   const updateMutation = useMutation<WorkspaceDetail, Error, FormData>({
-    mutationFn: (data: FormData) => api.patch<WorkspaceDetail>(`/api/workspaces/${workspaceId}`, data),
+    mutationFn: (data: FormData) =>
+      api.patch<WorkspaceDetail>(`/api/workspaces/${workspaceId}`, data),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['workspaces', workspaceId] })
       queryClient.invalidateQueries({ queryKey: ['workspaces'] })
@@ -72,6 +90,11 @@ export default function WorkspaceSettingsPage() {
   const onSubmit = (data: FormData) => {
     updateMutation.mutate(data)
   }
+
+  // Determine current user's role
+  const currentUserMember = workspace?.members?.find((m) => m.user_id === currentUser?.id)
+  const currentUserRole = currentUserMember?.role || 'member'
+  const isAdmin = currentUserRole === 'admin'
 
   if (isLoading) {
     return <SettingsPageSkeleton />
@@ -91,7 +114,7 @@ export default function WorkspaceSettingsPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8">
+    <div className="container mx-auto max-w-5xl px-4 py-8">
       <div className="mb-8">
         <Button variant="ghost" asChild className="mb-4">
           <Link href={`/workspaces/${workspaceId}`}>
@@ -99,10 +122,20 @@ export default function WorkspaceSettingsPage() {
             Back to Workspace
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Workspace Settings</h1>
-        <p className="mt-2 text-muted-foreground">
-          Manage workspace details, members, and danger zone actions.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Workspace Settings</h1>
+            <p className="mt-2 text-muted-foreground">
+              Manage workspace details, members, and permissions.
+            </p>
+          </div>
+          {isAdmin && (
+            <Button onClick={() => setShowInviteModal(true)}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Invite Members
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -116,66 +149,85 @@ export default function WorkspaceSettingsPage() {
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Workspace Name</Label>
-                <Input id="name" {...register('name')} />
+                <Input id="name" {...register('name')} disabled={!isAdmin} />
                 {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  disabled={!isDirty || updateMutation.isPending}
-                >
-                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-                {isDirty && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => reset()}
-                    disabled={updateMutation.isPending}
-                  >
-                    Cancel
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={!isDirty || updateMutation.isPending}>
+                    {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
                   </Button>
-                )}
-              </div>
+                  {isDirty && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => reset()}
+                      disabled={updateMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
 
-        {/* Members - Placeholder */}
+        {/* Members & Invitations */}
         <Card>
           <CardHeader>
-            <CardTitle>Members</CardTitle>
+            <CardTitle>Team</CardTitle>
             <CardDescription>
-              Manage workspace members and their permissions. (Coming in Story 2.2)
+              Manage workspace members, roles, and pending invitations.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">Member management will be available soon.</p>
+            <Tabs defaultValue="members" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="members">Members</TabsTrigger>
+                <TabsTrigger value="invitations">
+                  Pending Invitations
+                  {isAdmin && <span className="ml-2 text-xs text-muted-foreground">(Admin)</span>}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="members" className="mt-6">
+                <MemberList
+                  workspaceId={workspaceId}
+                  currentUserId={currentUser?.id || ''}
+                  currentUserRole={currentUserRole}
+                />
+              </TabsContent>
+              <TabsContent value="invitations" className="mt-6">
+                <PendingInvitationsList workspaceId={workspaceId} isAdmin={isAdmin} />
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
 
         {/* Danger Zone */}
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>
-              Irreversible actions that will permanently affect your workspace.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
-              <div>
-                <h4 className="font-semibold">Delete Workspace</h4>
-                <p className="text-sm text-muted-foreground">
-                  This will delete all boards, cards, and memberships.
-                </p>
+        {isAdmin && (
+          <Card className="border-destructive">
+            <CardHeader>
+              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              <CardDescription>
+                Irreversible actions that will permanently affect your workspace.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between rounded-lg border border-destructive/50 p-4">
+                <div>
+                  <h4 className="font-semibold">Delete Workspace</h4>
+                  <p className="text-sm text-muted-foreground">
+                    This will delete all boards, cards, and memberships.
+                  </p>
+                </div>
+                <Button variant="destructive" onClick={() => setShowDeleteModal(true)}>
+                  Delete Workspace
+                </Button>
               </div>
-              <Button variant="destructive" onClick={() => setShowDeleteModal(true)}>
-                Delete Workspace
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <DeleteWorkspaceModal
@@ -183,13 +235,19 @@ export default function WorkspaceSettingsPage() {
         open={showDeleteModal}
         onOpenChange={setShowDeleteModal}
       />
+
+      <InviteMembersModal
+        workspaceId={workspaceId}
+        open={showInviteModal}
+        onOpenChange={setShowInviteModal}
+      />
     </div>
   )
 }
 
 function SettingsPageSkeleton() {
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-8">
+    <div className="container mx-auto max-w-5xl px-4 py-8">
       <div className="mb-8">
         <div className="mb-4 h-10 w-48 animate-pulse rounded bg-muted" />
         <div className="h-10 w-64 animate-pulse rounded bg-muted" />

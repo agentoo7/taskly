@@ -11,7 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.user import User
+from app.models.workspace_audit_log import AuditActionEnum
 from app.models.workspace_member import RoleEnum
+from app.services.audit_service import AuditService
 from app.services.workspace_service import WorkspaceService
 
 logger = structlog.get_logger(__name__)
@@ -194,6 +196,9 @@ async def update_member_role(
                 detail="You are the only admin. Promote another member first.",
             )
 
+    # Store old role for audit
+    old_role = member.role
+
     # Update role
     await db.execute(
         update(WorkspaceMember)
@@ -207,8 +212,21 @@ async def update_member_role(
     )
     await db.commit()
 
+    # Audit log
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        workspace_id=workspace_id,
+        actor_id=UUIDType(str(current_user.id)),
+        action=AuditActionEnum.MEMBER_ROLE_CHANGED,
+        resource_type="member",
+        resource_id=user_id,
+        context_data={
+            "old_role": str(old_role),
+            "new_role": data.role.value,
+        },
+    )
+
     # TODO: Broadcast WebSocket event member_role_changed with timestamp
-    # TODO: Log audit event
 
     logger.info(
         "member.role.updated",
@@ -302,6 +320,9 @@ async def remove_member(
                 detail="Cannot remove the last admin. Promote another member first.",
             )
 
+    # Store member info for audit
+    member_role = member.role
+
     # Remove member
     await db.execute(
         delete(WorkspaceMember).where(
@@ -313,8 +334,18 @@ async def remove_member(
     )
     await db.commit()
 
+    # Audit log
+    audit_service = AuditService(db)
+    await audit_service.log_action(
+        workspace_id=workspace_id,
+        actor_id=UUIDType(str(current_user.id)),
+        action=AuditActionEnum.MEMBER_REMOVED,
+        resource_type="member",
+        resource_id=user_id,
+        context_data={"role": str(member_role)},
+    )
+
     # TODO: Broadcast WebSocket event member_removed with timestamp
-    # TODO: Log audit event
 
     logger.info(
         "member.removed",

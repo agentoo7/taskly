@@ -9,8 +9,10 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
+from app.models.workspace_audit_log import AuditActionEnum
 from app.models.workspace_invitation import DeliveryStatusEnum, WorkspaceInvitation
 from app.models.workspace_member import RoleEnum, WorkspaceMember
+from app.services.audit_service import AuditService
 
 logger = structlog.get_logger(__name__)
 
@@ -117,6 +119,21 @@ class InvitationService:
         # Refresh all invitations to get generated fields
         for invitation in invitations:
             await self.db.refresh(invitation)
+
+        # Audit log for each invitation
+        audit_service = AuditService(self.db)
+        for invitation in invitations:
+            await audit_service.log_action(
+                workspace_id=workspace_id,
+                actor_id=inviter_id,
+                action=AuditActionEnum.INVITATION_CREATED,
+                resource_type="invitation",
+                resource_id=UUID(str(invitation.id)),
+                context_data={
+                    "email": invitation.email,
+                    "role": invitation.role.value,
+                },
+            )
 
         logger.info(
             "invitation.create.success",
@@ -259,6 +276,20 @@ class InvitationService:
         await self.db.commit()
         await self.db.refresh(member)
 
+        # Audit log
+        audit_service = AuditService(self.db)
+        await audit_service.log_action(
+            workspace_id=UUID(str(invitation.workspace_id)),
+            actor_id=user_id,
+            action=AuditActionEnum.INVITATION_ACCEPTED,
+            resource_type="invitation",
+            resource_id=UUID(str(invitation.id)),
+            context_data={
+                "email": invitation.email,
+                "role": invitation.role.value,
+            },
+        )
+
         logger.info(
             "invitation.accept.success",
             workspace_id=str(invitation.workspace_id),
@@ -289,6 +320,17 @@ class InvitationService:
 
         # Verify admin permission
         await self._check_admin(UUID(str(invitation.workspace_id)), admin_id)
+
+        # Audit log before deletion
+        audit_service = AuditService(self.db)
+        await audit_service.log_action(
+            workspace_id=UUID(str(invitation.workspace_id)),
+            actor_id=admin_id,
+            action=AuditActionEnum.INVITATION_REVOKED,
+            resource_type="invitation",
+            resource_id=invitation_id,
+            context_data={"email": invitation.email},
+        )
 
         await self.db.delete(invitation)
         await self.db.commit()
@@ -349,6 +391,17 @@ class InvitationService:
 
         await self.db.commit()
         await self.db.refresh(invitation)
+
+        # Audit log
+        audit_service = AuditService(self.db)
+        await audit_service.log_action(
+            workspace_id=UUID(str(invitation.workspace_id)),
+            actor_id=admin_id,
+            action=AuditActionEnum.INVITATION_RESENT,
+            resource_type="invitation",
+            resource_id=invitation_id,
+            context_data={"email": invitation.email},
+        )
 
         logger.info(
             "invitation.resend.success",
