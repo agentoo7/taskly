@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { api } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { useSidebarStore } from '@/store/sidebar-store'
+import { CreateWorkspaceModal } from '@/components/workspace/create-workspace-modal'
 
 interface Workspace {
   id: string
@@ -27,6 +28,7 @@ export function Sidebar() {
   const router = useRouter()
   const { isCollapsed, toggle } = useSidebarStore()
   const currentWorkspaceId = params.workspaceId as string | undefined
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { data: workspaces, isLoading } = useQuery<Workspace[]>({
     queryKey: ['workspaces'],
@@ -38,63 +40,66 @@ export function Sidebar() {
   }
 
   const handleCreateWorkspace = () => {
-    router.push('/workspaces')
+    setShowCreateModal(true)
   }
 
   if (isCollapsed) {
     return (
-      <aside className="flex h-screen w-16 flex-col border-r bg-muted/40">
-        <div className="flex h-14 items-center justify-center border-b px-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggle}
-            className="h-8 w-8"
-            aria-label="Expand sidebar"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-        <nav className="flex-1 space-y-2 overflow-y-auto p-2">
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-10 w-10 animate-pulse rounded-lg bg-muted"
-                />
-              ))}
-            </div>
-          ) : (
-            workspaces?.map((workspace) => (
-              <button
-                key={workspace.id}
-                onClick={() => handleWorkspaceClick(workspace.id)}
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
-                  currentWorkspaceId === workspace.id
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
-                )}
-                title={workspace.name}
-              >
-                <Briefcase className="h-4 w-4" />
-              </button>
-            ))
-          )}
-        </nav>
-        <div className="border-t p-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCreateWorkspace}
-            className="h-10 w-10"
-            title="Create workspace"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-      </aside>
+      <>
+        <aside className="flex h-screen w-16 flex-col border-r bg-muted/40">
+          <div className="flex h-14 items-center justify-center border-b px-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              className="h-8 w-8"
+              aria-label="Expand sidebar"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <nav className="flex-1 space-y-2 overflow-y-auto p-2">
+            {isLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-10 w-10 animate-pulse rounded-lg bg-muted"
+                  />
+                ))}
+              </div>
+            ) : (
+              workspaces?.map((workspace) => (
+                <button
+                  key={workspace.id}
+                  onClick={() => handleWorkspaceClick(workspace.id)}
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground',
+                    currentWorkspaceId === workspace.id
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted'
+                  )}
+                  title={workspace.name}
+                >
+                  <Briefcase className="h-4 w-4" />
+                </button>
+              ))
+            )}
+          </nav>
+          <div className="border-t p-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleCreateWorkspace}
+              className="h-10 w-10"
+              title="Create workspace"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
+        </aside>
+        <CreateWorkspaceModal open={showCreateModal} onOpenChange={setShowCreateModal} />
+      </>
     )
   }
 
@@ -164,5 +169,6 @@ export function Sidebar() {
         </Button>
       </div>
     </aside>
+    <CreateWorkspaceModal open={showCreateModal} onOpenChange={setShowCreateModal} />
   )
 }
