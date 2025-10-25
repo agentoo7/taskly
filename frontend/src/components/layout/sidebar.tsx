@@ -62,10 +62,7 @@ export function Sidebar() {
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div
-                    key={i}
-                    className="h-10 w-10 animate-pulse rounded-lg bg-muted"
-                  />
+                  <div key={i} className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
                 ))}
               </div>
             ) : (
@@ -125,10 +122,7 @@ export function Sidebar() {
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-10 animate-pulse rounded-lg bg-muted"
-                />
+                <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
               ))}
             </div>
           ) : workspaces && workspaces.length > 0 ? (

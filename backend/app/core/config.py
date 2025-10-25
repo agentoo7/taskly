@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     # CORS
     CORS_ORIGINS_STR: str = "http://localhost:3000"
 
+    # Email (SendGrid or SMTP)
+    SENDGRID_API_KEY: str = ""
+    SMTP_HOST: str = "mailhog"  # Default to MailHog for local dev
+    SMTP_PORT: int = 1025
+    SMTP_USERNAME: str = ""  # MailHog doesn't need auth
+    SMTP_PASSWORD: str = ""
+    FROM_EMAIL: str = "noreply@taskly.app"
+    FROM_NAME: str = "Taskly"
+    APP_URL: str = "http://localhost:3000"
+
     @property
     def CORS_ORIGINS(self) -> list[str]:
         """Parse CORS_ORIGINS from comma-separated string."""

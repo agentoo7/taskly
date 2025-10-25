@@ -27,11 +27,7 @@ interface DeleteWorkspaceModalProps {
   onOpenChange: (open: boolean) => void
 }
 
-export function DeleteWorkspaceModal({
-  workspace,
-  open,
-  onOpenChange,
-}: DeleteWorkspaceModalProps) {
+export function DeleteWorkspaceModal({ workspace, open, onOpenChange }: DeleteWorkspaceModalProps) {
   const [confirmName, setConfirmName] = useState('')
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -87,8 +83,8 @@ export function DeleteWorkspaceModal({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Workspace?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the workspace and all
-            boards, cards, and data within it.
+            This action cannot be undone. This will permanently delete the workspace and all boards,
+            cards, and data within it.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="grid gap-4 py-4">

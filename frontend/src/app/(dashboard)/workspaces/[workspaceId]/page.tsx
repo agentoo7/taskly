@@ -45,7 +45,8 @@ export default function WorkspaceDashboardPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold">Workspace not found</h2>
           <p className="mt-2 text-muted-foreground">
-            The workspace you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.
+            The workspace you&apos;re looking for doesn&apos;t exist or you don&apos;t have access
+            to it.
           </p>
           <Button asChild className="mt-4">
             <Link href="/workspaces">Back to Workspaces</Link>

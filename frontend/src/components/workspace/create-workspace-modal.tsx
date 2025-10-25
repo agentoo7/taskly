@@ -84,14 +84,8 @@ export function CreateWorkspaceModal({ open, onOpenChange }: CreateWorkspaceModa
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Workspace Name</Label>
-              <Input
-                id="name"
-                placeholder="My Workspace"
-                {...register('name')}
-              />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
-              )}
+              <Input id="name" placeholder="My Workspace" {...register('name')} />
+              {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
           </div>
           <DialogFooter>
