@@ -2,7 +2,7 @@
 
 import enum
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import (
     Column,
@@ -60,7 +60,7 @@ class WorkspaceInvitation(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.utcnow() + timedelta(days=7),
+        default=lambda: datetime.now(timezone.utc) + timedelta(days=7),
     )
     accepted_at = Column(DateTime(timezone=True))
 
@@ -81,7 +81,7 @@ class WorkspaceInvitation(Base):
     @property
     def is_expired(self) -> bool:
         """Check if invitation has expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at
 
     @property
     def is_accepted(self) -> bool:

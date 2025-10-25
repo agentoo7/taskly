@@ -97,11 +97,19 @@ async def get_workspace(
     if not workspace:
         raise HTTPException(status_code=404, detail="Workspace not found")
 
-    # For now, return empty lists for boards and members
-    # These will be populated in future stories
+    # Get workspace members
+    members = await service.get_workspace_members(workspace_id)
+
+    # Convert workspace response to dict and populate members
     response_data = WorkspaceResponse.model_validate(workspace).model_dump()
-    response_data["boards"] = []
-    response_data["members"] = []
+    response_data["boards"] = []  # Will be populated in future stories
+    response_data["members"] = [
+        {
+            "user_id": str(member.user_id),
+            "role": member.role.value,
+        }
+        for member in members
+    ]
     return WorkspaceDetailResponse(**response_data)
 
 

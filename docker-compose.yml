@@ -38,6 +38,16 @@ services:
     networks:
       - taskly-network
 
+  # MailHog - Local Email Server for Development
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: taskly-mailhog
+    ports:
+      - "1025:1025"  # SMTP port
+      - "8025:8025"  # Web UI port
+    networks:
+      - taskly-network
+
   # FastAPI Backend
   backend:
     build:
@@ -64,6 +74,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - taskly-network
+
+  # Celery Worker for background tasks
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: taskly-celery-worker
+    command: celery -A app.tasks.celery_app worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://taskly:taskly@postgres:5432/taskly
+      - REDIS_URL=redis://redis:6379/0
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - taskly-network
 

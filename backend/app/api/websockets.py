@@ -49,7 +49,6 @@ async def get_current_user_ws(
 async def workspace_websocket(
     websocket: WebSocket,
     workspace_id: str,
-    user: User = Depends(get_current_user_ws),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -63,13 +62,39 @@ async def workspace_websocket(
     - member_added: { event: "member_added", data: { workspace_id, user_id, role } }
     - member_removed: { event: "member_removed", data: { workspace_id, user_id } }
     """
-    workspace_service = WorkspaceService(db)
+    # Accept connection first
+    await websocket.accept()
 
     try:
+        # Get token from query params
+        token = websocket.query_params.get("token")
+        if not token:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Missing token")
+            return
+
+        # Authenticate user
+        try:
+            payload = decode_jwt_token(token)
+            user_id = payload.get("sub")
+            if not user_id:
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Invalid token")
+                return
+
+            user_repo = UserRepository(db)
+            user = await user_repo.get(user_id)
+            if not user:
+                await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="User not found")
+                return
+        except Exception as e:
+            logger.error("websocket.auth.failed", error=str(e))
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+            return
+
         # Verify user has access to this workspace
+        workspace_service = WorkspaceService(db)
         is_member = await workspace_service.check_workspace_member(workspace_id, user.id)
         if not is_member:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Not a workspace member")
             return
 
         # Connect to workspace room

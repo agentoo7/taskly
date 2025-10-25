@@ -307,3 +307,20 @@ class WorkspaceService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="You must be a workspace admin to perform this action",
             )
+
+    async def get_workspace_members(self, workspace_id: UUID) -> list[WorkspaceMember]:
+        """
+        Get all members of a workspace.
+
+        Args:
+            workspace_id: UUID of workspace
+
+        Returns:
+            List of workspace members
+        """
+        result = await self.db.execute(
+            select(WorkspaceMember)
+            .where(WorkspaceMember.workspace_id == workspace_id)
+            .order_by(WorkspaceMember.joined_at)
+        )
+        return list(result.scalars().all())

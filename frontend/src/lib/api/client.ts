@@ -160,7 +160,19 @@ class ApiClient {
     // Handle non-OK responses
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.detail || `Request failed with status ${response.status}`)
+
+      // Create error with detail preserved
+      const error = new Error(
+        typeof errorData.detail === 'string'
+          ? errorData.detail
+          : errorData.detail?.message || `Request failed with status ${response.status}`
+      )
+
+      // Attach full detail for structured error handling
+      ;(error as any).detail = errorData.detail
+      ;(error as any).status = response.status
+
+      throw error
     }
 
     // Handle 204 No Content (e.g., DELETE requests)

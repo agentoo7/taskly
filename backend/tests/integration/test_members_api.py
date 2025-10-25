@@ -620,3 +620,56 @@ class TestRemoveMember:
         assert response.status_code == 404
 
         app.dependency_overrides.clear()
+
+    @pytest.mark.asyncio
+    async def test_member_removal_revokes_access(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_workspace: Workspace,
+        test_user: User,
+        admin_member: WorkspaceMember,
+        regular_member: tuple[WorkspaceMember, User],
+    ):
+        """Test that removed member loses access to workspace."""
+        member, regular_user = regular_member
+
+        # First, verify member can access workspace
+        from app.api.dependencies import get_current_user
+        from app.main import app
+
+        async def override_get_current_user_regular():
+            return regular_user
+
+        app.dependency_overrides[get_current_user] = override_get_current_user_regular
+
+        # Regular user should be able to GET workspace
+        response = await client.get(f"/api/workspaces/{test_workspace.id}")
+        assert response.status_code == 200
+
+        app.dependency_overrides.clear()
+
+        # Now remove the member as admin
+        async def override_get_current_user_admin():
+            return test_user
+
+        app.dependency_overrides[get_current_user] = override_get_current_user_admin
+
+        response = await client.delete(
+            f"/api/workspaces/{test_workspace.id}/members/{regular_user.id}"
+        )
+        assert response.status_code == 204
+
+        app.dependency_overrides.clear()
+
+        # Verify removed user can no longer access workspace
+        app.dependency_overrides[get_current_user] = override_get_current_user_regular
+
+        response = await client.get(f"/api/workspaces/{test_workspace.id}")
+        assert response.status_code == 403
+
+        # Verify removed user cannot access workspace members
+        response = await client.get(f"/api/workspaces/{test_workspace.id}/members")
+        assert response.status_code == 403
+
+        app.dependency_overrides.clear()

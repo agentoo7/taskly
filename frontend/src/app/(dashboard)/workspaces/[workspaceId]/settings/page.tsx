@@ -54,12 +54,12 @@ export default function WorkspaceSettingsPage() {
   const [showInviteModal, setShowInviteModal] = useState(false)
 
   // Fetch current user
-  const { data: currentUser } = useQuery({
+  const { data: currentUser, error: userError, isLoading: userLoading } = useQuery({
     queryKey: ['user'],
     queryFn: () => api.get<{ id: string }>('/api/me'),
   })
 
-  const { data: workspace, isLoading } = useQuery({
+  const { data: workspace, error: workspaceError, isLoading } = useQuery({
     queryKey: ['workspaces', workspaceId],
     queryFn: () => api.get<WorkspaceDetail>(`/api/workspaces/${workspaceId}`),
   })
@@ -96,8 +96,50 @@ export default function WorkspaceSettingsPage() {
   const currentUserRole = currentUserMember?.role || 'member'
   const isAdmin = currentUserRole === 'admin'
 
-  if (isLoading) {
+  // Debug logging
+  console.log('🔍 Settings Page Debug:', {
+    currentUserId: currentUser?.id,
+    currentUser,
+    userError: userError?.message,
+    workspaceMembers: workspace?.members,
+    workspace,
+    workspaceError: workspaceError?.message,
+    currentUserMember,
+    currentUserRole,
+    isAdmin,
+  })
+
+  if (isLoading || userLoading) {
     return <SettingsPageSkeleton />
+  }
+
+  // Show error states
+  if (userError) {
+    return (
+      <div className="container mx-auto max-w-3xl px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive">Failed to load user</h2>
+          <p className="mt-2 text-muted-foreground">{userError.message}</p>
+          <Button asChild className="mt-4" onClick={() => window.location.reload()}>
+            <Link href="/login">Re-login</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (workspaceError) {
+    return (
+      <div className="container mx-auto max-w-3xl px-4 py-8">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-destructive">Failed to load workspace</h2>
+          <p className="mt-2 text-muted-foreground">{workspaceError.message}</p>
+          <Button asChild className="mt-4">
+            <Link href="/workspaces">Back to Workspaces</Link>
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (!workspace) {

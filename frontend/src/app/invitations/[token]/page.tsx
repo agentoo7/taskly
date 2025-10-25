@@ -54,7 +54,8 @@ export default function InvitationAcceptancePage() {
   } = useQuery<InvitationDetails>({
     queryKey: ['invitation', token],
     queryFn: async () => {
-      const res = await fetch(`/api/invitations/${token}`)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const res = await fetch(`${apiUrl}/api/invitations/${token}`)
       if (!res.ok) {
         throw new Error('Invitation not found')
       }
@@ -78,27 +79,26 @@ export default function InvitationAcceptancePage() {
   // Accept invitation mutation
   const { mutate: acceptInvitation, isPending: isAccepting } = useMutation({
     mutationFn: async () => {
-      const res = await fetch(`/api/invitations/${token}/accept`, {
-        method: 'POST',
-        credentials: 'include',
-      })
+      return await api.post(`/api/invitations/${token}/accept`)
+    },
+    onError: (error: any) => {
+      console.error('Accept invitation error:', error)
 
-      if (!res.ok) {
-        const error = await res.json()
-
-        // Handle email mismatch (AC 14)
-        if (error.detail?.type === 'email_mismatch') {
-          setEmailMismatchError({
-            invitationEmail: error.detail.invitation_email,
-            userEmail: error.detail.user_email,
-          })
-          throw new Error('email_mismatch')
-        }
-
-        throw new Error(error.detail || 'Failed to accept invitation')
+      // Handle email mismatch (AC 14)
+      if (error.detail?.type === 'email_mismatch') {
+        setEmailMismatchError({
+          invitationEmail: error.detail.invitation_email,
+          userEmail: error.detail.user_email,
+        })
+        return
       }
 
-      return res.json()
+      // Display error message
+      toast({
+        variant: 'destructive',
+        title: 'Failed to accept invitation',
+        description: error.message || 'An error occurred',
+      })
     },
     onSuccess: (data) => {
       toast({
@@ -112,15 +112,6 @@ export default function InvitationAcceptancePage() {
       // Redirect to workspace
       router.push(`/workspaces/${data.workspace_id}`)
     },
-    onError: (error: Error) => {
-      if (error.message !== 'email_mismatch') {
-        toast({
-          variant: 'destructive',
-          title: 'Failed to accept invitation',
-          description: error.message,
-        })
-      }
-    },
   })
 
   const handleSignInRedirect = () => {
@@ -130,9 +121,10 @@ export default function InvitationAcceptancePage() {
 
   const handleSignOut = async () => {
     try {
-      await fetch('/auth/logout', { method: 'POST', credentials: 'include' })
+      await api.post('/auth/logout')
       setEmailMismatchError(null)
       queryClient.invalidateQueries({ queryKey: ['user'] })
+      api.logout()
       toast({
         title: 'Signed out',
         description: 'Please sign in with the correct account',

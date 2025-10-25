@@ -757,3 +757,216 @@ class TestResendInvitation:
         assert len(audit_logs) > 0
 
         app.dependency_overrides.clear()
+
+
+class TestCascadeDelete:
+    """Tests for cascade deletion of invitations."""
+
+    @pytest.mark.asyncio
+    async def test_deleting_workspace_cascades_to_invitations(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_workspace: Workspace,
+        test_user: User,
+        admin_member: WorkspaceMember,
+    ):
+        """Test that deleting workspace also deletes pending invitations."""
+        # Create some pending invitations
+        invitation1 = WorkspaceInvitation(
+            id=uuid.uuid4(),
+            workspace_id=test_workspace.id,
+            email="pending1@example.com",
+            token="cascade_token1",
+            role=RoleEnum.MEMBER,
+            invited_by=test_user.id,
+            expires_at=datetime.utcnow() + timedelta(days=7),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        invitation2 = WorkspaceInvitation(
+            id=uuid.uuid4(),
+            workspace_id=test_workspace.id,
+            email="pending2@example.com",
+            token="cascade_token2",
+            role=RoleEnum.MEMBER,
+            invited_by=test_user.id,
+            expires_at=datetime.utcnow() + timedelta(days=7),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+        )
+        db_session.add_all([invitation1, invitation2])
+        await db_session.commit()
+
+        # Verify invitations exist
+        result = await db_session.execute(
+            select(WorkspaceInvitation).where(
+                WorkspaceInvitation.workspace_id == test_workspace.id
+            )
+        )
+        invitations_before = result.scalars().all()
+        assert len(invitations_before) == 2
+
+        # Mock authentication
+        from app.api.dependencies import get_current_user
+
+        async def override_get_current_user():
+            return test_user
+
+        from app.main import app
+
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        # Delete workspace
+        response = await client.delete(f"/api/workspaces/{test_workspace.id}")
+
+        assert response.status_code == 204
+
+        # Verify invitations were cascade deleted
+        result = await db_session.execute(
+            select(WorkspaceInvitation).where(
+                WorkspaceInvitation.workspace_id == test_workspace.id
+            )
+        )
+        invitations_after = result.scalars().all()
+        assert len(invitations_after) == 0
+
+        # Verify workspace was deleted
+        result = await db_session.execute(
+            select(Workspace).where(Workspace.id == test_workspace.id)
+        )
+        workspace = result.scalar_one_or_none()
+        assert workspace is None
+
+        app.dependency_overrides.clear()
+
+
+class TestRateLimiting:
+    """Tests for rate limiting on invitation creation.
+    
+    NOTE: Rate limiting is not yet implemented. These tests document the expected behavior.
+    """
+
+    @pytest.mark.skip(reason="Rate limiting not yet implemented")
+    @pytest.mark.asyncio
+    async def test_rate_limiting_blocks_excessive_invitations(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_workspace: Workspace,
+        test_user: User,
+        admin_member: WorkspaceMember,
+    ):
+        """
+        Test that rate limiting prevents more than 50 invitations per hour.
+        
+        Expected behavior:
+        - First 50 invitation requests succeed (201)
+        - 51st request returns 429 Too Many Requests
+        - Response includes Retry-After header
+        - Rate limit resets after 1 hour
+        
+        TODO: Implement rate limiting using:
+        - Redis for distributed rate limiting
+        - Sliding window algorithm
+        - Per-workspace or per-user limits
+        - Configuration in settings
+        
+        Implementation location: app/api/invitations.py
+        Add rate limiting middleware or dependency
+        """
+        from app.api.dependencies import get_current_user
+        from app.main import app
+
+        async def override_get_current_user():
+            return test_user
+
+        app.dependency_overrides[get_current_user] = override_get_current_user
+
+        # Send 50 invitations (should all succeed)
+        for i in range(50):
+            response = await client.post(
+                f"/api/workspaces/{test_workspace.id}/invitations",
+                json={"emails": [f"user{i}@example.com"], "role": "member"},
+            )
+            assert response.status_code == 201, f"Invitation {i+1} should succeed"
+
+        # 51st invitation should be rate limited
+        response = await client.post(
+            f"/api/workspaces/{test_workspace.id}/invitations",
+            json={"emails": ["blocked@example.com"], "role": "member"},
+        )
+        assert response.status_code == 429, "Should return 429 Too Many Requests"
+        assert "Retry-After" in response.headers
+        
+        error_data = response.json()
+        assert "rate limit" in error_data["detail"].lower()
+
+        app.dependency_overrides.clear()
+
+    @pytest.mark.skip(reason="Rate limiting not yet implemented")
+    @pytest.mark.asyncio
+    async def test_rate_limit_is_per_workspace(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_user: User,
+    ):
+        """
+        Test that rate limits are per-workspace, not global.
+        
+        A user should be able to send 50 invitations to Workspace A
+        and 50 invitations to Workspace B within the same hour.
+        """
+        pass
+
+    @pytest.mark.skip(reason="Rate limiting not yet implemented")
+    @pytest.mark.asyncio
+    async def test_rate_limit_resets_after_window(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_workspace: Workspace,
+        test_user: User,
+        admin_member: WorkspaceMember,
+    ):
+        """
+        Test that rate limit resets after the time window expires.
+        
+        TODO: Implement using time-based testing or mocked time
+        """
+        pass
+
+    @pytest.mark.skip(reason="Rate limiting not yet implemented")
+    @pytest.mark.asyncio
+    async def test_rate_limit_counts_all_emails_in_batch(
+        self,
+        client: AsyncClient,
+        db_session: AsyncSession,
+        test_workspace: Workspace,
+        test_user: User,
+        admin_member: WorkspaceMember,
+    ):
+        """
+        Test that rate limiting counts individual emails, not API requests.
+        
+        Sending one request with 10 emails should count as 10 toward the limit.
+        """
+        pass
+
+
+# Implementation Checklist for Rate Limiting:
+#
+# [ ] Add Redis dependency for distributed rate limiting
+# [ ] Create rate limiting middleware or dependency
+# [ ] Configure rate limits in settings (default: 50/hour)
+# [ ] Implement sliding window algorithm
+# [ ] Add rate limit headers to responses:
+#     - X-RateLimit-Limit: 50
+#     - X-RateLimit-Remaining: 23
+#     - X-RateLimit-Reset: 1234567890
+#     - Retry-After: 3600 (when limit exceeded)
+# [ ] Make rate limits configurable per environment
+# [ ] Add rate limit bypass for admin/system users
+# [ ] Log rate limit violations for monitoring
+# [ ] Update API documentation with rate limit info

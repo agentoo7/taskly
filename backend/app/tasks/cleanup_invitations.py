@@ -4,16 +4,16 @@ import asyncio
 from datetime import datetime, timedelta
 
 import structlog
-from celery import shared_task
 from sqlalchemy import and_, delete
 
 from app.core.database import AsyncSessionLocal
 from app.models.workspace_invitation import WorkspaceInvitation
+from app.tasks.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
 
 
-@shared_task
+@celery_app.task
 def cleanup_expired_invitations() -> dict[str, int]:
     """
     Delete expired unaccepted invitations older than 30 days.
@@ -26,8 +26,14 @@ def cleanup_expired_invitations() -> dict[str, int]:
     Returns:
         dict with deleted_count
     """
-    result = asyncio.run(_cleanup_expired_invitations())
-    return result
+    # Create fresh event loop for Celery worker
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(_cleanup_expired_invitations())
+        return result
+    finally:
+        loop.close()
 
 
 async def _cleanup_expired_invitations() -> dict[str, int]:

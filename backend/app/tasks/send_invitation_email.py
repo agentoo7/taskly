@@ -5,18 +5,18 @@ from datetime import datetime
 from pathlib import Path
 
 import structlog
-from celery import shared_task
 from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.models.workspace_invitation import DeliveryStatusEnum, WorkspaceInvitation
+from app.tasks.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
 
 
-@shared_task(bind=True, time_limit=30, soft_time_limit=25, max_retries=3)
+@celery_app.task(bind=True, time_limit=30, soft_time_limit=25, max_retries=3)
 def send_invitation_email_task(self, invitation_id: str) -> dict[str, str]:
     """
     Send invitation email via SendGrid.
@@ -37,9 +37,14 @@ def send_invitation_email_task(self, invitation_id: str) -> dict[str, str]:
         Exception: Re-raises after max retries exceeded
     """
     try:
-        # Run async database operations in event loop
-        result = asyncio.run(_send_invitation_email(invitation_id))
-        return result
+        # Create fresh event loop for Celery worker
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            result = loop.run_until_complete(_send_invitation_email(invitation_id))
+            return result
+        finally:
+            loop.close()
     except Exception as exc:
         logger.error(
             "invitation.email.failed",
@@ -139,6 +144,62 @@ async def _send_invitation_email(invitation_id: str) -> dict[str, str]:
                     "invitation.email.sendgrid_error",
                     invitation_id=invitation_id,
                     error=str(e),
+                )
+                raise
+
+        elif settings.SMTP_HOST:
+            # Development: Send via SMTP (MailHog)
+            try:
+                import smtplib
+                from email.mime.multipart import MIMEMultipart
+                from email.mime.text import MIMEText
+
+                # Create message
+                msg = MIMEMultipart("alternative")
+                msg["Subject"] = "You're invited to join a workspace on Taskly"
+                msg["From"] = f"{settings.FROM_NAME} <{settings.FROM_EMAIL}>"
+                msg["To"] = str(invitation.email)
+
+                # Attach HTML content
+                html_part = MIMEText(html_content, "html")
+                msg.attach(html_part)
+
+                # Send via SMTP
+                with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+                    if settings.SMTP_USERNAME and settings.SMTP_PASSWORD:
+                        server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+                    server.send_message(msg)
+
+                # Update delivery status
+                from sqlalchemy.orm import attributes
+
+                attributes.set_attribute(invitation, "delivery_status", DeliveryStatusEnum.SENT)
+                await db.commit()
+
+                logger.info(
+                    "invitation.email.smtp_sent",
+                    invitation_id=invitation_id,
+                    email=str(invitation.email),
+                    smtp_host=settings.SMTP_HOST,
+                )
+
+                return {
+                    "status": "sent",
+                    "message": f"Email sent to {invitation.email} via SMTP",
+                }
+
+            except Exception as e:
+                # Update delivery status to FAILED
+                from sqlalchemy.orm import attributes
+
+                attributes.set_attribute(invitation, "delivery_status", DeliveryStatusEnum.FAILED)
+                await db.commit()
+
+                logger.error(
+                    "invitation.email.smtp_error",
+                    invitation_id=invitation_id,
+                    error=str(e),
+                    error_type=type(e).__name__,
                 )
                 raise
 
