@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { useToast } from '@/hooks/use-toast'
 import { api } from '@/lib/api/client'
 
 interface DeleteWorkspaceModalProps {
@@ -34,15 +35,34 @@ export function DeleteWorkspaceModal({
   const [confirmName, setConfirmName] = useState('')
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
 
   const deleteMutation = useMutation({
     mutationFn: () => api.delete(`/api/workspaces/${workspace.id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+      // Close modal first
       onOpenChange(false)
-      router.push('/workspaces')
+
+      // Show success toast
+      toast({
+        title: 'Workspace deleted',
+        description: `${workspace.name} has been permanently deleted.`,
+      })
+
+      // Invalidate cache and redirect
+      queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+
+      // Use setTimeout to ensure modal closes before navigation
+      setTimeout(() => {
+        router.push('/workspaces')
+      }, 100)
     },
     onError: (error) => {
+      toast({
+        title: 'Failed to delete workspace',
+        description: 'An error occurred while deleting the workspace. Please try again.',
+        variant: 'destructive',
+      })
       console.error('Failed to delete workspace:', error)
     },
   })

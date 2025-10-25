@@ -163,6 +163,11 @@ class ApiClient {
       throw new Error(errorData.detail || `Request failed with status ${response.status}`)
     }
 
+    // Handle 204 No Content (e.g., DELETE requests)
+    if (response.status === 204) {
+      return undefined as T
+    }
+
     // Parse and return response
     return response.json()
   }
