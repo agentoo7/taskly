@@ -1,5 +1,7 @@
 """API dependencies for authentication and authorization."""
 
+from uuid import UUID
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,3 +105,53 @@ async def get_current_user_optional(
         return user
     except ValueError:
         return None
+
+
+async def check_workspace_admin(
+    workspace_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Check if current user is admin of workspace.
+
+    Args:
+        workspace_id: UUID of workspace to check
+        current_user: Current authenticated user
+        db: Database session
+
+    Raises:
+        HTTPException: 403 if user is not an admin of the workspace
+    """
+    from app.services.workspace_service import WorkspaceService
+
+    service = WorkspaceService(db)
+    await service._check_admin(workspace_id, current_user.id)
+
+
+async def check_workspace_member(
+    workspace_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    """
+    Check if current user is a member of workspace.
+
+    Args:
+        workspace_id: UUID of workspace to check
+        current_user: Current authenticated user
+        db: Database session
+
+    Raises:
+        HTTPException: 403 if user is not a member of the workspace
+    """
+    from app.services.workspace_service import WorkspaceService
+
+    service = WorkspaceService(db)
+    is_member = await service.check_workspace_member(workspace_id, current_user.id)
+
+    if not is_member:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be a workspace member to access this resource",
+        )
