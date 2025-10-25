@@ -13,7 +13,12 @@ from app.main import app
 from app.models import *  # noqa: F401, F403
 
 # Test database URL (use a separate test database)
-TEST_DATABASE_URL = "postgresql+asyncpg://taskly:taskly@localhost:5432/taskly_test"
+# Use 'postgres' hostname when running inside Docker, 'localhost' when running locally
+import os
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://taskly:taskly@postgres:5432/taskly_test"
+)
 
 # Create test engine
 test_engine = create_async_engine(
@@ -31,7 +36,7 @@ TestSessionLocal = async_sessionmaker(
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator:
+def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
     """Create an instance of the default event loop for the test session."""
     loop = asyncio.get_event_loop_policy().new_event_loop()
     yield loop
@@ -56,7 +61,18 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest_asyncio.fixture(scope="function")
-async def client() -> AsyncGenerator[AsyncClient, None]:
+async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Create an async HTTP client for testing the FastAPI app."""
+    from app.core.database import get_db
+
+    # Override database dependency to use test database
+    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
+
     async with AsyncClient(app=app, base_url="http://test") as ac:
         yield ac
+
+    # Clear dependency overrides after test
+    app.dependency_overrides.clear()

@@ -5,8 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.middleware import CorrelationIDMiddleware
 from app.api.users import router as users_router
+from app.api.websockets import router as websockets_router
+from app.api.workspaces import router as workspaces_router
 from app.core.config import settings
+from app.core.logging import configure_logging
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -15,6 +19,16 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+
+@app.on_event("startup")
+async def startup_event() -> None:
+    """Configure application on startup."""
+    configure_logging()
+
+
+# Add correlation ID middleware (before CORS)
+app.add_middleware(CorrelationIDMiddleware)
 
 # Configure CORS
 app.add_middleware(
@@ -29,6 +43,8 @@ app.add_middleware(
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(auth_router, prefix="/auth", tags=["authentication"])
 app.include_router(users_router, prefix="/api", tags=["users"])
+app.include_router(workspaces_router)
+app.include_router(websockets_router, tags=["websockets"])
 
 
 @app.get("/")

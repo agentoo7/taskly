@@ -59,6 +59,28 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
+def decode_jwt_token(token: str) -> dict[str, Any]:
+    """
+    Decode JWT token and return payload without verification of type.
+
+    Args:
+        token: JWT token to decode
+
+    Returns:
+        Token payload dictionary
+
+    Raises:
+        ValueError: If token is invalid or expired
+    """
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError as e:
+        raise ValueError("Token expired") from e
+    except jwt.InvalidTokenError as e:
+        raise ValueError("Invalid token") from e
+
+
 def verify_token(token: str, expected_type: str = "access") -> uuid.UUID:
     """
     Verify JWT token and return user_id.
