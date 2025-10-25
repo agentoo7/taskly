@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.workspace import Workspace
 from app.models.workspace_member import RoleEnum, WorkspaceMember
+from app.websockets.manager import manager
 
 logger = structlog.get_logger(__name__)
 
@@ -155,6 +156,20 @@ class WorkspaceService:
             await self.db.commit()
             await self.db.refresh(workspace)
 
+            # Broadcast WebSocket event to workspace members
+            await manager.broadcast_to_workspace(
+                str(workspace_id),
+                {
+                    "event": "workspace_updated",
+                    "data": {
+                        "workspace_id": str(workspace.id),
+                        "name": workspace.name,
+                        "updated_by": str(user_id),
+                    }
+                },
+                exclude_user_id=str(user_id)  # Don't send to user who made the change
+            )
+
             logger.info(
                 "workspace.update.success",
                 workspace_id=str(workspace.id),
@@ -209,6 +224,19 @@ class WorkspaceService:
                 raise HTTPException(status_code=404, detail="Workspace not found")
 
             workspace_name = workspace.name
+
+            # Broadcast WebSocket event before deletion
+            await manager.broadcast_to_workspace(
+                str(workspace_id),
+                {
+                    "event": "workspace_deleted",
+                    "data": {
+                        "workspace_id": str(workspace_id),
+                        "deleted_by": str(user_id),
+                    }
+                }
+            )
+
             await self.db.delete(workspace)
             await self.db.commit()
 

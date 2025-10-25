@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Plus, Settings as SettingsIcon } from 'lucide-react'
 import { api } from '@/lib/api/client'
+import { useWorkspaceWebSocket } from '@/hooks/use-workspace-websocket'
 import Link from 'next/link'
 
 interface WorkspaceDetail {
@@ -25,6 +26,9 @@ interface WorkspaceDetail {
 export default function WorkspaceDashboardPage() {
   const params = useParams()
   const workspaceId = params.workspaceId as string
+
+  // Connect to WebSocket for real-time updates
+  useWorkspaceWebSocket(workspaceId)
 
   const { data: workspace, isLoading } = useQuery({
     queryKey: ['workspaces', workspaceId],
