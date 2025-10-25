@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api/client'
 
 interface Member {
   user_id: string
@@ -64,34 +65,14 @@ export function MemberList({ workspaceId, currentUserId, currentUserRole }: Memb
       const params = new URLSearchParams()
       if (search) params.append('search', search)
 
-      const res = await fetch(`/api/workspaces/${workspaceId}/members?${params}`, {
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to fetch members')
-      }
-
-      return res.json()
+      return api.get<Member[]>(`/api/workspaces/${workspaceId}/members?${params}`)
     },
   })
 
   // Update role mutation
   const { mutate: updateRole, isPending: isUpdatingRole } = useMutation({
     mutationFn: async ({ userId, newRole }: { userId: string; newRole: 'admin' | 'member' }) => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/members/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.detail || 'Failed to update role')
-      }
-
-      return res.json()
+      return api.patch(`/api/workspaces/${workspaceId}/members/${userId}`, { role: newRole })
     },
     onSuccess: (_, variables) => {
       toast({
@@ -112,15 +93,7 @@ export function MemberList({ workspaceId, currentUserId, currentUserRole }: Memb
   // Remove member mutation
   const { mutate: removeMember, isPending: isRemoving } = useMutation({
     mutationFn: async (userId: string) => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/members/${userId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.detail || 'Failed to remove member')
-      }
+      return api.delete(`/api/workspaces/${workspaceId}/members/${userId}`)
     },
     onSuccess: () => {
       toast({

@@ -23,6 +23,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api/client'
 
 interface Invitation {
   id: string
@@ -47,32 +48,14 @@ export function PendingInvitationsList({ workspaceId, isAdmin }: PendingInvitati
   const { data: invitations = [], isLoading } = useQuery<Invitation[]>({
     queryKey: ['workspace', workspaceId, 'invitations'],
     queryFn: async () => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/invitations`, {
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        throw new Error('Failed to fetch invitations')
-      }
-
-      return res.json()
+      return api.get<Invitation[]>(`/api/workspaces/${workspaceId}/invitations`)
     },
   })
 
   // Resend invitation mutation
   const { mutate: resendInvitation, isPending: isResending } = useMutation({
     mutationFn: async (invitationId: string) => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/invitations/${invitationId}/resend`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.detail || 'Failed to resend invitation')
-      }
-
-      return res.json()
+      return api.post(`/api/workspaces/${workspaceId}/invitations/${invitationId}/resend`)
     },
     onSuccess: () => {
       toast({
@@ -93,15 +76,7 @@ export function PendingInvitationsList({ workspaceId, isAdmin }: PendingInvitati
   // Revoke invitation mutation
   const { mutate: revokeInvitation, isPending: isRevoking } = useMutation({
     mutationFn: async (invitationId: string) => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/invitations/${invitationId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.detail || 'Failed to revoke invitation')
-      }
+      return api.delete(`/api/workspaces/${workspaceId}/invitations/${invitationId}`)
     },
     onSuccess: () => {
       toast({

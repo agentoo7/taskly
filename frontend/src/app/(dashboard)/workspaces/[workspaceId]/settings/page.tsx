@@ -56,7 +56,7 @@ export default function WorkspaceSettingsPage() {
   // Fetch current user
   const { data: currentUser } = useQuery({
     queryKey: ['user'],
-    queryFn: () => api.get<{ id: string }>('/api/users/me'),
+    queryFn: () => api.get<{ id: string }>('/api/me'),
   })
 
   const { data: workspace, isLoading } = useQuery({

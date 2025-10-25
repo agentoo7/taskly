@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
+import { api } from '@/lib/api/client'
 
 const inviteSchema = z.object({
   emails: z
@@ -52,19 +53,10 @@ export function InviteMembersModal({ workspaceId, open, onOpenChange }: InviteMe
 
   const { mutate: inviteMembers, isPending } = useMutation({
     mutationFn: async (data: InviteFormData) => {
-      const res = await fetch(`/api/workspaces/${workspaceId}/invitations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emails: data.emails, role: data.role }),
-        credentials: 'include',
+      return api.post(`/api/workspaces/${workspaceId}/invitations`, {
+        emails: data.emails,
+        role: data.role,
       })
-
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.detail || 'Failed to send invitations')
-      }
-
-      return res.json()
     },
     onSuccess: (data) => {
       toast({

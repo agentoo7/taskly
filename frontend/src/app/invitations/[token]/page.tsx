@@ -68,7 +68,7 @@ export default function InvitationAcceptancePage() {
     queryKey: ['user'],
     queryFn: async () => {
       try {
-        return await api.get<User>('/api/users/me')
+        return await api.get<User>('/api/me')
       } catch {
         return null // User not authenticated
       }
