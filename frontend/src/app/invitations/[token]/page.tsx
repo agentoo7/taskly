@@ -28,6 +28,10 @@ interface InvitationDetails {
   is_accepted: boolean
 }
 
+interface AcceptInvitationResponse {
+  workspace_id: string
+}
+
 interface User {
   id: string
   email: string
@@ -69,17 +73,22 @@ export default function InvitationAcceptancePage() {
     queryKey: ['user'],
     queryFn: async () => {
       try {
+        // Check if user has token before making request
+        const hasToken = typeof window !== 'undefined' && localStorage.getItem('access_token')
+        if (!hasToken) {
+          return null // No token, user not authenticated
+        }
         return await api.get<User>('/api/me')
       } catch {
-        return null // User not authenticated
+        return null // User not authenticated or token invalid
       }
     },
   })
 
   // Accept invitation mutation
-  const { mutate: acceptInvitation, isPending: isAccepting } = useMutation({
+  const { mutate: acceptInvitation, isPending: isAccepting } = useMutation<AcceptInvitationResponse>({
     mutationFn: async () => {
-      return await api.post(`/api/invitations/${token}/accept`)
+      return await api.post<AcceptInvitationResponse>(`/api/invitations/${token}/accept`)
     },
     onError: (error: any) => {
       console.error('Accept invitation error:', error)
@@ -115,8 +124,9 @@ export default function InvitationAcceptancePage() {
   })
 
   const handleSignInRedirect = () => {
-    // Redirect to GitHub OAuth with return URL
-    window.location.href = `/auth/github?redirect=/invitations/${token}`
+    // Redirect to backend GitHub OAuth with return URL
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    window.location.href = `${apiUrl}/auth/github/login?redirect=/invitations/${token}`
   }
 
   const handleSignOut = async () => {

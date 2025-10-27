@@ -2,14 +2,14 @@
 
 import { Github } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 export const dynamic = 'force-dynamic'
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const [isLoading, setIsLoading] = useState(false)
@@ -41,7 +41,12 @@ export default function LoginPage() {
                 <strong>Missing authorization code.</strong> Please try signing in again.
               </>
             )}
-            {error !== 'auth_failed' && error !== 'missing_code' && (
+            {error === 'session_expired' && (
+              <>
+                <strong>Your session has expired.</strong> Please sign in again to continue.
+              </>
+            )}
+            {error !== 'auth_failed' && error !== 'missing_code' && error !== 'session_expired' && (
               <>
                 <strong>An error occurred.</strong> {error}
               </>
@@ -89,5 +94,22 @@ export default function LoginPage() {
         </div>
       </Card>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+        <Card className="w-full max-w-md p-8 shadow-lg">
+          <div className="text-center">
+            <h1 className="mb-2 text-4xl font-bold text-slate-900">Taskly</h1>
+            <p className="text-lg text-slate-600">Loading...</p>
+          </div>
+        </Card>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
