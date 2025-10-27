@@ -44,7 +44,18 @@ def send_invitation_email_task(self, invitation_id: str) -> dict[str, str]:
             result = loop.run_until_complete(_send_invitation_email(invitation_id))
             return result
         finally:
-            loop.close()
+            # Clean up pending tasks before closing loop
+            try:
+                pending = asyncio.all_tasks(loop)
+                if pending:
+                    for task in pending:
+                        task.cancel()
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            except Exception:
+                pass  # Ignore cleanup errors
+            finally:
+                loop.run_until_complete(loop.shutdown_asyncgens())
+                loop.close()
     except Exception as exc:
         logger.error(
             "invitation.email.failed",

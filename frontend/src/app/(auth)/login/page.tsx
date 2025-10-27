@@ -41,7 +41,12 @@ function LoginContent() {
                 <strong>Missing authorization code.</strong> Please try signing in again.
               </>
             )}
-            {error !== 'auth_failed' && error !== 'missing_code' && (
+            {error === 'session_expired' && (
+              <>
+                <strong>Your session has expired.</strong> Please sign in again to continue.
+              </>
+            )}
+            {error !== 'auth_failed' && error !== 'missing_code' && error !== 'session_expired' && (
               <>
                 <strong>An error occurred.</strong> {error}
               </>
