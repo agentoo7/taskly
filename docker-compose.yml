@@ -58,11 +58,12 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+    env_file:
+      - ./backend/.env
     environment:
       - DATABASE_URL=postgresql+asyncpg://taskly:taskly@postgres:5432/taskly
       - REDIS_URL=redis://redis:6379/0
       - PYTHONUNBUFFERED=1
-      - CORS_ORIGINS_STR=http://localhost:3000
     depends_on:
       postgres:
         condition: service_healthy
@@ -109,7 +110,6 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=http://localhost:8000

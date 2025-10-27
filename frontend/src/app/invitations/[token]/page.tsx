@@ -28,6 +28,10 @@ interface InvitationDetails {
   is_accepted: boolean
 }
 
+interface AcceptInvitationResponse {
+  workspace_id: string
+}
+
 interface User {
   id: string
   email: string
@@ -77,9 +81,9 @@ export default function InvitationAcceptancePage() {
   })
 
   // Accept invitation mutation
-  const { mutate: acceptInvitation, isPending: isAccepting } = useMutation({
+  const { mutate: acceptInvitation, isPending: isAccepting } = useMutation<AcceptInvitationResponse>({
     mutationFn: async () => {
-      return await api.post(`/api/invitations/${token}/accept`)
+      return await api.post<AcceptInvitationResponse>(`/api/invitations/${token}/accept`)
     },
     onError: (error: any) => {
       console.error('Accept invitation error:', error)

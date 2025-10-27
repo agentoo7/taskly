@@ -31,6 +31,50 @@ export function useWorkspaceWebSocket(workspaceId: string | undefined) {
   const reconnectAttemptsRef = useRef(0)
   const maxReconnectAttempts = 5
 
+  const handleMessage = useCallback((message: WebSocketMessage) => {
+    console.log('WebSocket message received:', message)
+
+    switch (message.event) {
+      case 'connected':
+        // Welcome message, no action needed
+        break
+
+      case 'workspace_updated': {
+        const data = message.data as WorkspaceUpdateData
+        // Invalidate workspace queries to refetch data
+        queryClient.invalidateQueries({ queryKey: ['workspaces', data.workspace_id] })
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+
+        // Show toast notification
+        toast({
+          title: 'Workspace updated',
+          description: `Workspace name changed to "${data.name}"`,
+        })
+        break
+      }
+
+      case 'workspace_deleted': {
+        const data = message.data as WorkspaceDeletedData
+        // Invalidate queries
+        queryClient.invalidateQueries({ queryKey: ['workspaces'] })
+
+        // Show toast notification
+        toast({
+          title: 'Workspace deleted',
+          description: 'This workspace has been deleted by an admin.',
+          variant: 'destructive',
+        })
+
+        // Redirect to workspaces list
+        window.location.href = '/workspaces'
+        break
+      }
+
+      default:
+        console.warn('Unknown WebSocket event:', message.event)
+    }
+  }, [queryClient, toast])
+
   const connect = useCallback(() => {
     if (!workspaceId) return
 
@@ -85,51 +129,7 @@ export function useWorkspaceWebSocket(workspaceId: string | undefined) {
     } catch (error) {
       console.error('Failed to create WebSocket connection:', error)
     }
-  }, [workspaceId])
-
-  const handleMessage = (message: WebSocketMessage) => {
-    console.log('WebSocket message received:', message)
-
-    switch (message.event) {
-      case 'connected':
-        // Welcome message, no action needed
-        break
-
-      case 'workspace_updated': {
-        const data = message.data as WorkspaceUpdateData
-        // Invalidate workspace queries to refetch data
-        queryClient.invalidateQueries({ queryKey: ['workspaces', data.workspace_id] })
-        queryClient.invalidateQueries({ queryKey: ['workspaces'] })
-
-        // Show toast notification
-        toast({
-          title: 'Workspace updated',
-          description: `Workspace name changed to "${data.name}"`,
-        })
-        break
-      }
-
-      case 'workspace_deleted': {
-        const data = message.data as WorkspaceDeletedData
-        // Invalidate queries
-        queryClient.invalidateQueries({ queryKey: ['workspaces'] })
-
-        // Show toast notification
-        toast({
-          title: 'Workspace deleted',
-          description: 'This workspace has been deleted by an admin.',
-          variant: 'destructive',
-        })
-
-        // Redirect to workspaces list
-        window.location.href = '/workspaces'
-        break
-      }
-
-      default:
-        console.warn('Unknown WebSocket event:', message.event)
-    }
-  }
+  }, [workspaceId, handleMessage])
 
   useEffect(() => {
     connect()
