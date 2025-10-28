@@ -18,9 +18,32 @@ interface WorkspaceDeletedData {
   deleted_by: string
 }
 
+interface MemberJoinedData {
+  user_id: string
+  username: string
+  email: string
+  avatar_url: string | null
+  role: string
+}
+
+interface MemberRoleChangedData {
+  user_id: string
+  username: string
+  old_role: string
+  new_role: string
+}
+
+interface MemberRemovedData {
+  user_id: string
+  username: string
+  removed_by: string
+  removed_by_username: string
+}
+
 interface WebSocketMessage {
-  event: string
-  data: WorkspaceUpdateData | WorkspaceDeletedData | Record<string, unknown>
+  type: string
+  data: WorkspaceUpdateData | WorkspaceDeletedData | MemberJoinedData | MemberRoleChangedData | MemberRemovedData | Record<string, unknown>
+  timestamp?: string
 }
 
 export function useWorkspaceWebSocket(workspaceId: string | undefined) {
@@ -34,7 +57,7 @@ export function useWorkspaceWebSocket(workspaceId: string | undefined) {
   const handleMessage = useCallback((message: WebSocketMessage) => {
     console.log('WebSocket message received:', message)
 
-    switch (message.event) {
+    switch (message.type) {
       case 'connected':
         // Welcome message, no action needed
         break
@@ -70,10 +93,49 @@ export function useWorkspaceWebSocket(workspaceId: string | undefined) {
         break
       }
 
+      case 'member_joined': {
+        const data = message.data as MemberJoinedData
+        // Invalidate members query to refetch list
+        queryClient.invalidateQueries({ queryKey: ['workspace', workspaceId, 'members'] })
+
+        // Show toast notification (AC 19)
+        toast({
+          title: 'New member joined',
+          description: `${data.username} has joined the workspace`,
+        })
+        break
+      }
+
+      case 'member_role_changed': {
+        const data = message.data as MemberRoleChangedData
+        // Invalidate members query to refetch list
+        queryClient.invalidateQueries({ queryKey: ['workspace', workspaceId, 'members'] })
+
+        // Show toast notification
+        toast({
+          title: 'Member role updated',
+          description: `${data.username}'s role changed from ${data.old_role} to ${data.new_role}`,
+        })
+        break
+      }
+
+      case 'member_removed': {
+        const data = message.data as MemberRemovedData
+        // Invalidate members query to refetch list
+        queryClient.invalidateQueries({ queryKey: ['workspace', workspaceId, 'members'] })
+
+        // Show toast notification
+        toast({
+          title: 'Member removed',
+          description: `${data.username} was removed from the workspace`,
+        })
+        break
+      }
+
       default:
-        console.warn('Unknown WebSocket event:', message.event)
+        console.warn('Unknown WebSocket event:', message.type)
     }
-  }, [queryClient, toast])
+  }, [queryClient, toast, workspaceId])
 
   const connect = useCallback(() => {
     if (!workspaceId) return

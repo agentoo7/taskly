@@ -3,10 +3,10 @@ WebSocket connection manager for real-time updates.
 Supports workspace rooms for broadcasting updates to all workspace members.
 """
 
-from typing import Dict, List, Set
-from fastapi import WebSocket
 import json
+
 import structlog
+from fastapi import WebSocket
 
 logger = structlog.get_logger(__name__)
 
@@ -15,13 +15,13 @@ class ConnectionManager:
     def __init__(self):
         # Store active connections by workspace_id
         # workspace_id -> set of WebSocket connections
-        self.workspace_connections: Dict[str, Set[WebSocket]] = {}
+        self.workspace_connections: dict[str, set[WebSocket]] = {}
 
         # Store user_id -> workspace_id mapping for cleanup
-        self.user_workspaces: Dict[str, Set[str]] = {}
+        self.user_workspaces: dict[str, set[str]] = {}
 
         # Store websocket -> user_id mapping
-        self.connection_users: Dict[WebSocket, str] = {}
+        self.connection_users: dict[WebSocket, str] = {}
 
     async def connect(self, websocket: WebSocket, workspace_id: str, user_id: str):
         """Add a new connection to a workspace room."""
@@ -44,7 +44,7 @@ class ConnectionManager:
             "websocket.connection.established",
             workspace_id=workspace_id,
             user_id=user_id,
-            active_connections=len(self.workspace_connections.get(workspace_id, set()))
+            active_connections=len(self.workspace_connections.get(workspace_id, set())),
         )
 
     def disconnect(self, websocket: WebSocket, workspace_id: str):
@@ -70,7 +70,7 @@ class ConnectionManager:
             "websocket.connection.closed",
             workspace_id=workspace_id,
             user_id=user_id,
-            remaining_connections=len(self.workspace_connections.get(workspace_id, set()))
+            remaining_connections=len(self.workspace_connections.get(workspace_id, set())),
         )
 
     async def send_personal_message(self, message: dict, websocket: WebSocket):
@@ -81,10 +81,7 @@ class ConnectionManager:
             logger.error("websocket.send.failed", error=str(e))
 
     async def broadcast_to_workspace(
-        self,
-        workspace_id: str,
-        message: dict,
-        exclude_user_id: str | None = None
+        self, workspace_id: str, message: dict, exclude_user_id: str | None = None
     ):
         """
         Broadcast a message to all connections in a workspace room.
@@ -104,11 +101,7 @@ class ConnectionManager:
             try:
                 await connection.send_text(json.dumps(message))
             except Exception as e:
-                logger.error(
-                    "websocket.broadcast.failed",
-                    workspace_id=workspace_id,
-                    error=str(e)
-                )
+                logger.error("websocket.broadcast.failed", workspace_id=workspace_id, error=str(e))
                 disconnected.add(connection)
 
         # Clean up disconnected connections
@@ -119,7 +112,7 @@ class ConnectionManager:
             "websocket.broadcast.complete",
             workspace_id=workspace_id,
             recipients=len(connections) - len(disconnected),
-            excluded_user=exclude_user_id
+            excluded_user=exclude_user_id,
         )
 
 

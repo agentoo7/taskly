@@ -10,6 +10,7 @@ from app.api.invitations import router as invitations_router
 from app.api.members import router as members_router
 from app.api.middleware import CorrelationIDMiddleware
 from app.api.users import router as users_router
+from app.api.webhooks import router as webhooks_router
 from app.api.websockets import router as websockets_router
 from app.api.workspaces import router as workspaces_router
 from app.core.config import settings
@@ -65,6 +66,7 @@ app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(workspaces_router)
 app.include_router(invitations_router)
 app.include_router(members_router)
+app.include_router(webhooks_router)
 app.include_router(websockets_router, tags=["websockets"])
 
 

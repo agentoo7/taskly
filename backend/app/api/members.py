@@ -226,7 +226,35 @@ async def update_member_role(
         },
     )
 
-    # TODO: Broadcast WebSocket event member_role_changed with timestamp
+    # Task 9 - Broadcast WebSocket event member_role_changed with timestamp (Coding Standard #10)
+    from app.websockets.manager import manager
+
+    # Fetch updated member details for broadcast
+    updated_member_result = await db.execute(
+        select(WorkspaceMember, User)
+        .join(User, WorkspaceMember.user_id == User.id)
+        .where(
+            and_(
+                WorkspaceMember.workspace_id == workspace_id,
+                WorkspaceMember.user_id == user_id,
+            )
+        )
+    )
+    updated_member, updated_user = updated_member_result.one()
+
+    await manager.broadcast_to_workspace(
+        workspace_id=str(workspace_id),
+        message={
+            "type": "member_role_changed",
+            "data": {
+                "user_id": str(user_id),
+                "username": updated_user.username,
+                "old_role": str(old_role.value),
+                "new_role": data.role.value,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        },
+    )
 
     logger.info(
         "member.role.updated",
@@ -320,8 +348,12 @@ async def remove_member(
                 detail="Cannot remove the last admin. Promote another member first.",
             )
 
-    # Store member info for audit
+    # Store member info for audit and broadcast
     member_role = member.role
+
+    # Fetch user details for broadcast before deletion
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    removed_user = user_result.scalar_one()
 
     # Remove member
     await db.execute(
@@ -345,7 +377,22 @@ async def remove_member(
         context_data={"role": str(member_role)},
     )
 
-    # TODO: Broadcast WebSocket event member_removed with timestamp
+    # Task 10 - Broadcast WebSocket event member_removed with timestamp (Coding Standard #10)
+    from app.websockets.manager import manager
+
+    await manager.broadcast_to_workspace(
+        workspace_id=str(workspace_id),
+        message={
+            "type": "member_removed",
+            "data": {
+                "user_id": str(user_id),
+                "username": removed_user.username,
+                "removed_by": str(current_user.id),
+                "removed_by_username": current_user.username,
+            },
+            "timestamp": datetime.utcnow().isoformat(),
+        },
+    )
 
     logger.info(
         "member.removed",

@@ -154,13 +154,30 @@ async def accept_invitation(
         HTTPException: 401 if not authenticated, 404 if not found,
                       400 if expired/accepted, 403 if email mismatch
     """
+    from datetime import datetime as dt
     from uuid import UUID as UUIDType
 
     service = InvitationService(db)
 
     member = await service.accept_invitation(token, UUIDType(str(current_user.id)))
 
-    # TODO: Task 7 - Broadcast WebSocket event member_joined with timestamp
+    # Task 7 - Broadcast WebSocket event member_joined with timestamp (AC 19)
+    from app.websockets.manager import manager
+
+    await manager.broadcast_to_workspace(
+        workspace_id=str(member.workspace_id),
+        message={
+            "type": "member_joined",
+            "data": {
+                "user_id": str(current_user.id),
+                "username": current_user.username,
+                "email": current_user.email,
+                "avatar_url": current_user.avatar_url,
+                "role": str(member.role.value),
+            },
+            "timestamp": dt.utcnow().isoformat(),
+        },
+    )
 
     logger.info(
         "api.invitations.accept.success",
