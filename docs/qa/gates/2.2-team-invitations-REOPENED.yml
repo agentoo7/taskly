@@ -1,0 +1,212 @@
+schema: 1
+story: '2.2'
+story_title: 'Team Member Invitations & Permissions'
+gate: FAIL
+status_reason: 'CRITICAL: Permission bypass vulnerability - Member role can perform admin-only operations (invite members, edit/delete workspaces). Complete authorization bypass contradicts AC 13. Gate reopened after production testing revealed critical regression.'
+reviewer: 'Quinn (Test Architect)'
+updated: '2025-10-28T14:00:00Z'
+reopened: true
+previous_gate: 'PASS'
+previous_quality_score: 95
+
+top_issues:
+  - severity: critical
+    category: security
+    title: 'Member role has unauthorized admin privileges - Authorization bypass'
+    description: 'Member users can invite members, edit workspaces, and delete workspaces despite AC 13 explicitly requiring these to be admin-only actions. Complete authorization bypass allows privilege escalation.'
+    refs:
+      - 'backend/app/api/invitations.py:57-80'
+      - 'backend/app/api/workspaces.py'
+      - 'backend/app/services/invitation_service.py:313-338'
+      - 'frontend/src/app/(dashboard)/workspaces/[workspaceId]/settings/page.tsx'
+      - 'frontend/src/components/workspace/invite-members-modal.tsx'
+    suggested_owner: dev
+    recommendation: 'IMMEDIATE FIX REQUIRED: 1) Verify _check_admin() is called before all admin operations, 2) Add permission checks to workspace edit/delete endpoints, 3) Fix frontend to hide admin UI based on currentUserRole, 4) Add integration tests for permission enforcement'
+    priority: P0
+    blocking: true
+    impact: 'HIGH - Data loss risk (unauthorized deletes), abuse potential (unlimited invites), complete authorization model broken'
+
+  - severity: medium
+    category: testing
+    title: 'Integration tests depend on external database'
+    description: 'Audit log integration tests cannot run without database connection, making them brittle'
+    refs: ['backend/tests/integration/test_audit_logs.py']
+    suggested_owner: dev
+    recommendation: 'Consider using pytest fixtures with in-memory database or mocking for integration tests'
+    status: 'ACCEPTED - Not blocking after permission fix'
+
+waiver:
+  active: false
+
+quality_score: 60
+previous_scores:
+  - date: '2025-10-28T12:00:00Z'
+    score: 95
+    gate: PASS
+    reason: 'Webhook security fix completed'
+  - date: '2025-10-28T00:00:00Z'
+    score: 85
+    gate: CONCERNS
+    reason: 'Webhook signature verification needed'
+
+expires: '2025-11-11T00:00:00Z'
+
+evidence:
+  tests_reviewed: 31
+  files_modified: 12
+  files_created: 17
+  risks_identified: 1
+  security_fixes_applied: 1
+  regressions_found: 1
+  production_testing: true
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22]
+    ac_gaps: [13]  # AC 13 BROKEN: Members can do admin tasks
+
+nfr_validation:
+  security:
+    status: FAIL
+    notes: 'CRITICAL REGRESSION: Authorization bypass vulnerability. Member role can perform admin-only operations. Webhook signature verification remains solid, but permission checks are broken/missing. This is MORE CRITICAL than the webhook issue we just fixed.'
+    previous_status: PASS
+  performance:
+    status: PASS
+    notes: 'Pagination implemented correctly (50 per page), database indexes added for query optimization, async/await patterns used throughout'
+  reliability:
+    status: PASS
+    notes: 'Error handling comprehensive, retry logic with exponential backoff, WebSocket reconnection strategy, correlation ID logging'
+  maintainability:
+    status: PASS
+    notes: 'Code is well-structured with service layer separation, comprehensive type hints, clear documentation, proper separation of concerns'
+
+reproduction_steps:
+  - 'Create workspace as Admin user'
+  - 'Invite new user with "Member" role via invite modal'
+  - 'User receives email, accepts invitation'
+  - 'Login as the Member user'
+  - 'BUG: Member can see "Invite Members" button (should be hidden)'
+  - 'BUG: Member can access workspace settings (should be 403)'
+  - 'BUG: Member can edit workspace details (should be 403)'
+  - 'BUG: Member can delete workspace (should be 403)'
+
+expected_behavior:
+  - 'Member should NOT see "Invite Members" button in UI'
+  - 'Member accessing /workspaces/{id}/settings should see 403 or be redirected'
+  - 'POST /api/workspaces/{id}/invitations should return 403 Forbidden'
+  - 'PATCH /api/workspaces/{id} should return 403 Forbidden'
+  - 'DELETE /api/workspaces/{id} should return 403 Forbidden'
+  - 'Error message: "Must be workspace admin"'
+
+root_cause_analysis:
+  suspected_causes:
+    - 'Backend: _check_admin() not called in API endpoints'
+    - 'Backend: Permission checks missing in workspace edit/delete endpoints'
+    - 'Frontend: currentUserRole not checked before showing admin UI'
+    - 'Frontend: Invite button visible to all users regardless of role'
+    - 'Middleware: Permission checks not enforced in route handlers'
+
+  files_to_investigate:
+    backend:
+      - 'app/api/invitations.py (line 57-80: create_invitations endpoint)'
+      - 'app/api/workspaces.py (edit and delete endpoints)'
+      - 'app/services/invitation_service.py (line 313-338: _check_admin)'
+      - 'app/api/dependencies.py (permission dependencies)'
+    frontend:
+      - 'app/(dashboard)/workspaces/[workspaceId]/settings/page.tsx (line 106-108: invite button)'
+      - 'components/workspace/invite-members-modal.tsx'
+      - 'hooks/use-workspace-role.ts (if exists)'
+
+fix_checklist:
+  backend:
+    - 'Verify _check_admin() is called in POST /api/workspaces/{id}/invitations'
+    - 'Add admin check to PATCH /api/workspaces/{id}'
+    - 'Add admin check to DELETE /api/workspaces/{id}'
+    - 'Ensure all admin-only endpoints return 403 for non-admins'
+    - 'Add integration tests: member_cannot_invite_others'
+    - 'Add integration tests: member_cannot_edit_workspace'
+    - 'Add integration tests: member_cannot_delete_workspace'
+
+  frontend:
+    - 'Check currentUserRole before showing "Invite Members" button'
+    - 'Hide workspace settings link for non-admins'
+    - 'Disable/hide delete workspace button for non-admins'
+    - 'Add role-based UI tests'
+
+  verification:
+    - 'Test as Member: should see 403 on admin actions'
+    - 'Test as Admin: should work normally'
+    - 'Run all integration tests'
+    - 'Manual testing with both roles'
+
+recommendations:
+  immediate:
+    - action: 'Fix backend permission checks - Add _check_admin() to all admin endpoints'
+      refs: ['backend/app/api/invitations.py', 'backend/app/api/workspaces.py']
+      priority: P0
+      effort: 'Small (2-3 hours)'
+      blocking: true
+
+    - action: 'Fix frontend role-based UI visibility'
+      refs: ['frontend/src/app/(dashboard)/workspaces/[workspaceId]/settings/page.tsx']
+      priority: P0
+      effort: 'Small (1 hour)'
+      blocking: true
+
+    - action: 'Add comprehensive permission tests'
+      refs: ['backend/tests/integration/']
+      priority: P0
+      effort: 'Small (2-3 hours)'
+      blocking: true
+
+  future:
+    - action: 'Consider adding rate limiting to webhook endpoint to prevent DoS attacks'
+      refs: ['backend/app/api/webhooks.py']
+      priority: P2
+      effort: 'Small (1-2 hours)'
+
+    - action: 'Add monitoring/alerting for webhook processing failures'
+      refs: ['backend/app/api/webhooks.py']
+      priority: P2
+      effort: 'Medium (4-8 hours)'
+
+strengths_still_valid:
+  - 'Webhook signature verification (ECDSA) implemented correctly'
+  - 'Comprehensive audit logging system with complete traceability'
+  - 'Pagination and search implemented correctly for scalability'
+  - 'Code follows async/await patterns consistently'
+  - 'Proper separation of concerns with service layer'
+  - 'All linting passed (Ruff, Black)'
+
+gate_decision_rationale: |
+  Gate REOPENED and downgraded from PASS to FAIL.
+
+  During production-readiness testing, a CRITICAL security vulnerability was discovered:
+  Member role users can perform admin-only operations, completely bypassing the authorization
+  model defined in AC 13.
+
+  This is MORE SEVERE than the webhook signature issue that was just fixed because:
+  1. Direct impact on data integrity (unauthorized deletes)
+  2. Abuse potential (unlimited invitations)
+  3. Complete failure of authorization model
+  4. Contradicts explicit acceptance criteria
+
+  The webhook security fix (ECDSA signature verification) remains solid and well-implemented.
+  However, the permission bypass vulnerability makes the application UNSAFE for production.
+
+  **Production Deployment**: ❌ BLOCKED until permission checks are fixed
+
+  Estimated fix time: 4-6 hours (backend checks + frontend UI + tests)
+
+  Once fixed, story can return to PASS status quickly as the infrastructure is solid.
+
+testing_gaps:
+  - 'Missing integration test: member_cannot_invite_others'
+  - 'Missing integration test: member_cannot_edit_workspace'
+  - 'Missing integration test: member_cannot_delete_workspace'
+  - 'Missing integration test: admin_can_invite_others'
+  - 'E2E test did not catch role-based permission issues'
+
+lessons_learned:
+  - 'Need role-based permission testing in E2E tests'
+  - 'Backend permission checks must be unit tested'
+  - 'Frontend UI restrictions are not sufficient - backend must enforce'
+  - 'Production-like testing catches issues missed in development'

@@ -165,9 +165,9 @@ class WorkspaceService:
                         "workspace_id": str(workspace.id),
                         "name": workspace.name,
                         "updated_by": str(user_id),
-                    }
+                    },
                 },
-                exclude_user_id=str(user_id)  # Don't send to user who made the change
+                exclude_user_id=str(user_id),  # Don't send to user who made the change
             )
 
             logger.info(
@@ -233,8 +233,8 @@ class WorkspaceService:
                     "data": {
                         "workspace_id": str(workspace_id),
                         "deleted_by": str(user_id),
-                    }
-                }
+                    },
+                },
             )
 
             await self.db.delete(workspace)
@@ -289,11 +289,15 @@ class WorkspaceService:
         Raises:
             HTTPException: If user is not an admin (403 Forbidden)
         """
+        from sqlalchemy import and_
+
         result = await self.db.execute(
             select(WorkspaceMember).where(
-                WorkspaceMember.workspace_id == workspace_id,
-                WorkspaceMember.user_id == user_id,
-                WorkspaceMember.role == RoleEnum.ADMIN,
+                and_(
+                    WorkspaceMember.workspace_id == workspace_id,
+                    WorkspaceMember.user_id == user_id,
+                    WorkspaceMember.role == RoleEnum.ADMIN,
+                )
             )
         )
         if not result.scalar_one_or_none():
