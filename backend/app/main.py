@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.boards import router as boards_router
 from app.api.health import router as health_router
 from app.api.invitations import router as invitations_router
 from app.api.members import router as members_router
@@ -64,6 +65,7 @@ app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(auth_router, prefix="/auth", tags=["authentication"])
 app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(workspaces_router)
+app.include_router(boards_router)
 app.include_router(invitations_router)
 app.include_router(members_router)
 app.include_router(webhooks_router)

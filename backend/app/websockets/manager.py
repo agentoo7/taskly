@@ -17,6 +17,10 @@ class ConnectionManager:
         # workspace_id -> set of WebSocket connections
         self.workspace_connections: dict[str, set[WebSocket]] = {}
 
+        # Store active connections by board_id
+        # board_id -> set of WebSocket connections
+        self.board_connections: dict[str, set[WebSocket]] = {}
+
         # Store user_id -> workspace_id mapping for cleanup
         self.user_workspaces: dict[str, set[str]] = {}
 
@@ -111,6 +115,46 @@ class ConnectionManager:
         logger.info(
             "websocket.broadcast.complete",
             workspace_id=workspace_id,
+            recipients=len(connections) - len(disconnected),
+            excluded_user=exclude_user_id,
+        )
+
+    async def broadcast_to_board(
+        self, board_id: str, message: dict, exclude_user_id: str | None = None
+    ):
+        """
+        Broadcast a message to all connections viewing a specific board.
+        Optionally exclude the user who triggered the update.
+        """
+        if board_id not in self.board_connections:
+            return
+
+        connections = self.board_connections[board_id].copy()
+        disconnected = set()
+
+        for connection in connections:
+            # Skip if this is the user who triggered the update
+            if exclude_user_id and self.connection_users.get(connection) == exclude_user_id:
+                continue
+
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                logger.error("websocket.broadcast.failed", board_id=board_id, error=str(e))
+                disconnected.add(connection)
+
+        # Clean up disconnected connections
+        for connection in disconnected:
+            # Note: We don't have board_id in disconnect signature yet
+            # For now, just remove from board_connections
+            self.board_connections[board_id].discard(connection)
+
+        if not self.board_connections[board_id]:
+            del self.board_connections[board_id]
+
+        logger.info(
+            "websocket.broadcast.complete",
+            board_id=board_id,
             recipients=len(connections) - len(disconnected),
             excluded_user=exclude_user_id,
         )
