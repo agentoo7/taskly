@@ -7,11 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.api.assignees import router as assignees_router
 from app.api.auth import router as auth_router
 from app.api.boards import router as boards_router
 from app.api.cards import router as cards_router
 from app.api.health import router as health_router
 from app.api.invitations import router as invitations_router
+from app.api.labels import router as labels_router
 from app.api.members import router as members_router
 from app.api.middleware import CorrelationIDMiddleware
 from app.api.users import router as users_router
@@ -65,13 +67,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-# Add no-cache middleware (first)
-app.add_middleware(NoCacheMiddleware)
-
-# Add correlation ID middleware (before CORS)
-app.add_middleware(CorrelationIDMiddleware)
-
-# Configure CORS
+# Configure CORS (must be first to handle preflight requests)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -81,6 +77,12 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Add correlation ID middleware (after CORS)
+app.add_middleware(CorrelationIDMiddleware)
+
+# Add no-cache middleware (last)
+app.add_middleware(NoCacheMiddleware)
+
 # Include routers
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(auth_router, prefix="/auth", tags=["authentication"])
@@ -88,6 +90,8 @@ app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(workspaces_router)
 app.include_router(boards_router)
 app.include_router(cards_router)
+app.include_router(labels_router)
+app.include_router(assignees_router)
 app.include_router(invitations_router)
 app.include_router(members_router)
 app.include_router(webhooks_router)

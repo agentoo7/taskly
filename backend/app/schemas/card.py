@@ -7,6 +7,8 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
 
 from app.models.card import PriorityEnum
+from app.schemas.label import LabelResponse
+from app.schemas.user import UserResponse
 
 
 class CardCreate(BaseModel):
@@ -66,6 +68,8 @@ class CardResponse(BaseModel):
     created_by: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
+    assignees: list[UserResponse] = []
+    labels: list[LabelResponse] = []
 
     class Config:
         from_attributes = True  # SQLAlchemy 2.0 compatibility
@@ -74,9 +78,7 @@ class CardResponse(BaseModel):
 class CardDetailResponse(CardResponse):
     """Detailed card response with additional metadata for future expansion."""
 
-    # Placeholders for future stories (comments, assignees, labels)
-    # assignees: list[UUID] = []
-    # labels: list[str] = []
+    # Placeholder for future stories (comments, etc.)
     # comment_count: int = 0
 
     class Config:

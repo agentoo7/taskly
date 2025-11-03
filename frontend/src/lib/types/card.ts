@@ -2,6 +2,9 @@
  * Card type definitions matching backend Pydantic schemas
  */
 
+import { User } from './user'
+import { Label } from './label'
+
 export type Priority = 'none' | 'low' | 'medium' | 'high' | 'urgent'
 
 export interface Card {
@@ -17,6 +20,8 @@ export interface Card {
   created_by: string | null
   created_at: string // ISO datetime string
   updated_at: string // ISO datetime string
+  assignees: User[]
+  labels: Label[]
 }
 
 export interface CardCreate {

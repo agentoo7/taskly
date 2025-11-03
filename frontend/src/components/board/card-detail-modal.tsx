@@ -21,6 +21,8 @@ import { Card as CardType, CardUpdate } from '@/lib/types/card'
 import { PrioritySelector } from './priority-selector'
 import { DueDatePicker } from './due-date-picker'
 import { MarkdownEditor } from './markdown-editor'
+import { AssigneeSelector } from './assignee-selector'
+import { LabelSelector } from './label-selector'
 import { toast } from 'sonner'
 
 interface CardDetailModalProps {
@@ -28,6 +30,7 @@ interface CardDetailModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   boardId: string
+  workspaceId: string
 }
 
 // Mock API client - will be replaced with actual implementation
@@ -55,7 +58,7 @@ const api = {
   },
 }
 
-export function CardDetailModal({ card, open, onOpenChange, boardId }: CardDetailModalProps) {
+export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId }: CardDetailModalProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || '')
   const [storyPoints, setStoryPoints] = useState<string>(
@@ -74,11 +77,31 @@ export function CardDetailModal({ card, open, onOpenChange, boardId }: CardDetai
 
   const updateMutation = useMutation({
     mutationFn: (updates: CardUpdate) => api.patch(`/api/cards/${card.id}`, updates),
+    onMutate: async (updates: CardUpdate) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['boards', boardId, 'cards'] })
+
+      // Snapshot previous value
+      const previousCards = queryClient.getQueryData(['boards', boardId, 'cards'])
+
+      // Optimistically update cards cache
+      queryClient.setQueryData(['boards', boardId, 'cards'], (old: CardType[] | undefined) => {
+        if (!old) return old
+        return old.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
+      })
+
+      return { previousCards }
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards', boardId] })
+      // Refetch to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['boards', boardId, 'cards'] })
       queryClient.invalidateQueries({ queryKey: ['cards', card.id] })
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context) => {
+      // Rollback on error
+      if (context?.previousCards) {
+        queryClient.setQueryData(['boards', boardId, 'cards'], context.previousCards)
+      }
       toast.error(`Failed to update card: ${error.message}`)
     },
   })
@@ -87,7 +110,7 @@ export function CardDetailModal({ card, open, onOpenChange, boardId }: CardDetai
     mutationFn: () => api.delete(`/api/cards/${card.id}`),
     onSuccess: () => {
       toast.success('Card deleted')
-      queryClient.invalidateQueries({ queryKey: ['boards', boardId] })
+      queryClient.invalidateQueries({ queryKey: ['boards', boardId, 'cards'] })
       onOpenChange(false)
     },
     onError: (error: Error) => {
@@ -204,6 +227,28 @@ export function CardDetailModal({ card, open, onOpenChange, boardId }: CardDetai
                 placeholder="0-99"
               />
             </div>
+          </div>
+
+          {/* Assignees Section */}
+          <div>
+            <Label className="mb-2 block">Assignees</Label>
+            <AssigneeSelector
+              cardId={card.id}
+              workspaceId={workspaceId}
+              assignees={card.assignees || []}
+              boardId={boardId}
+            />
+          </div>
+
+          {/* Labels Section */}
+          <div>
+            <Label className="mb-2 block">Labels</Label>
+            <LabelSelector
+              cardId={card.id}
+              workspaceId={workspaceId}
+              labels={card.labels || []}
+              boardId={boardId}
+            />
           </div>
         </div>
 

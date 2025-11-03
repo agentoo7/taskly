@@ -70,7 +70,19 @@ class Card(Base):
         back_populates="assigned_cards",
         viewonly=True,
     )
+    labels = relationship(
+        "WorkspaceLabel",
+        secondary="card_labels",
+        back_populates="cards",
+        viewonly=True,
+    )
     sprint = relationship("Sprint", back_populates="cards")
+    activities = relationship(
+        "CardActivity",
+        back_populates="card",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     # Indexes
     __table_args__ = (

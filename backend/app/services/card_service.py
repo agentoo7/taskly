@@ -8,6 +8,7 @@ import structlog
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.board import Board
 from app.models.card import Card
@@ -95,7 +96,7 @@ class CardService:
                 )
                 self.db.add(card)
                 await self.db.flush()
-                await self.db.refresh(card)
+                await self.db.refresh(card, ["assignees", "labels"])
 
             await self.db.commit()
 
@@ -154,7 +155,11 @@ class CardService:
         # Verify permissions
         await self._get_board_with_permission(board_id, user_id)
 
-        query = select(Card).where(Card.board_id == board_id)
+        query = (
+            select(Card)
+            .where(Card.board_id == board_id)
+            .options(selectinload(Card.assignees), selectinload(Card.labels))
+        )
         if column_id:
             col_uuid = column_id if isinstance(column_id, UUID) else uuid.UUID(str(column_id))
             query = query.where(Card.column_id == col_uuid)

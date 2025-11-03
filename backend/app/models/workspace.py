@@ -39,6 +39,9 @@ class Workspace(Base):
         viewonly=True,
     )
     boards = relationship("Board", back_populates="workspace", cascade="all, delete-orphan")
+    labels = relationship(
+        "WorkspaceLabel", back_populates="workspace", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         """String representation of Workspace."""

@@ -5,7 +5,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { api } from '@/lib/api/client'
 import { BoardColumn } from '@/components/board/board-column'
 import { Button } from '@/components/ui/button'
@@ -41,8 +41,11 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { BoardCard as BoardCardComponent } from '@/components/board/board-card'
+import { FilterBar } from '@/components/board/filter-bar'
 import { v4 as uuidv4 } from 'uuid'
-import { Card } from '@/lib/types/card'
+import { Card, Priority } from '@/lib/types/card'
+import { Label } from '@/lib/types/label'
+import { User } from '@/lib/types/user'
 import { useBoardWebSocket } from '@/hooks/use-board-websocket'
 import { useCardSelectionStore } from '@/store/card-selection-store'
 import { X } from 'lucide-react'
@@ -68,6 +71,7 @@ export default function BoardPage() {
   const boardId = params.boardId as string
   const workspaceId = params.workspaceId as string
   const router = useRouter()
+  const searchParams = useSearchParams()
   const queryClient = useQueryClient()
   const [editingName, setEditingName] = useState(false)
   const [activeCard, setActiveCard] = useState<Card | null>(null)
@@ -78,6 +82,43 @@ export default function BoardPage() {
     oldPosition: number
   } | null>(null)
   const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Initialize filter state from URL query params
+  const getInitialFilters = () => {
+    const assignees = searchParams.get('assignees')?.split(',').filter(Boolean) || []
+    const labels = searchParams.get('labels')?.split(',').filter(Boolean) || []
+    const priorities = searchParams.get('priorities')?.split(',').filter(Boolean) as Priority[] || []
+    return { assignees, labels, priorities }
+  }
+
+  const initialFilters = getInitialFilters()
+  const [selectedAssignees, setSelectedAssignees] = useState<string[]>(initialFilters.assignees)
+  const [selectedLabels, setSelectedLabels] = useState<string[]>(initialFilters.labels)
+  const [selectedPriorities, setSelectedPriorities] = useState<Priority[]>(initialFilters.priorities)
+
+  // Update URL when filters change
+  useEffect(() => {
+    const params = new URLSearchParams()
+
+    if (selectedAssignees.length > 0) {
+      params.set('assignees', selectedAssignees.join(','))
+    }
+
+    if (selectedLabels.length > 0) {
+      params.set('labels', selectedLabels.join(','))
+    }
+
+    if (selectedPriorities.length > 0) {
+      params.set('priorities', selectedPriorities.join(','))
+    }
+
+    const queryString = params.toString()
+    const newUrl = queryString
+      ? `/workspaces/${workspaceId}/boards/${boardId}?${queryString}`
+      : `/workspaces/${workspaceId}/boards/${boardId}`
+
+    router.replace(newUrl, { scroll: false })
+  }, [selectedAssignees, selectedLabels, selectedPriorities, workspaceId, boardId, router])
 
   // Cleanup undo timeout on unmount
   useEffect(() => {
@@ -99,6 +140,50 @@ export default function BoardPage() {
     queryFn: () => api.get<Card[]>(`/api/boards/${boardId}/cards`),
     enabled: !!boardId,
   })
+
+  // Fetch workspace members for filter
+  const { data: workspaceMembers = [] } = useQuery({
+    queryKey: ['workspaces', workspaceId, 'members'],
+    queryFn: () => api.get<User[]>(`/api/workspaces/${workspaceId}/members`),
+    enabled: !!workspaceId,
+  })
+
+  // Fetch workspace labels for filter
+  const { data: workspaceLabels = [] } = useQuery({
+    queryKey: ['workspace-labels', workspaceId],
+    queryFn: () => api.get<Label[]>(`/api/workspaces/${workspaceId}/labels`),
+    enabled: !!workspaceId,
+  })
+
+  // Apply filters to cards
+  const filteredCards = cards.filter((card) => {
+    // Filter by assignees
+    if (selectedAssignees.length > 0) {
+      const cardAssigneeIds = card.assignees?.map((a) => a.id) || []
+      const hasSelectedAssignee = selectedAssignees.some((id) => cardAssigneeIds.includes(id))
+      if (!hasSelectedAssignee) return false
+    }
+
+    // Filter by labels
+    if (selectedLabels.length > 0) {
+      const cardLabelIds = card.labels?.map((l) => l.id) || []
+      const hasSelectedLabel = selectedLabels.some((id) => cardLabelIds.includes(id))
+      if (!hasSelectedLabel) return false
+    }
+
+    // Filter by priorities
+    if (selectedPriorities.length > 0) {
+      if (!selectedPriorities.includes(card.priority)) return false
+    }
+
+    return true
+  })
+
+  const clearFilters = () => {
+    setSelectedAssignees([])
+    setSelectedLabels([])
+    setSelectedPriorities([])
+  }
 
   // Real-time WebSocket connection for board updates
   useBoardWebSocket(boardId)
@@ -245,6 +330,26 @@ export default function BoardPage() {
     onMutate: async ({ cardIds, columnId, position }) => {
       await queryClient.cancelQueries({ queryKey: ['boards', boardId, 'cards'] })
       const previousCards = queryClient.getQueryData<Card[]>(['boards', boardId, 'cards'])
+
+      // Optimistically update cards
+      queryClient.setQueryData(['boards', boardId, 'cards'], (old: Card[] | undefined) => {
+        if (!old) return old
+
+        // Separate cards into moving and staying
+        const movingCards = old.filter((c) => cardIds.includes(c.id))
+        const stayingCards = old.filter((c) => !cardIds.includes(c.id))
+
+        // Update moving cards with new column and position
+        const updatedMovingCards = movingCards.map((c, index) => ({
+          ...c,
+          column_id: columnId,
+          position: position + index,
+        }))
+
+        // Combine and sort by position within columns
+        return [...stayingCards, ...updatedMovingCards]
+      })
+
       return { previousCards }
     },
     onError: (err, variables, context) => {
@@ -457,8 +562,9 @@ export default function BoardPage() {
       )}
 
       {/* Header */}
-      <div className="border-b p-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="border-b p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-4">
           {/* Selection Indicator */}
           {hasSelection && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md">
@@ -536,13 +642,27 @@ export default function BoardPage() {
               {board.name}
             </button>
           )}
+          </div>
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/workspaces/${workspaceId}/boards/${boardId}/settings`}>
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Link>
+          </Button>
         </div>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/workspaces/${workspaceId}/boards/${boardId}/settings`}>
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Link>
-        </Button>
+
+        {/* Filter Bar */}
+        <FilterBar
+          workspaceMembers={workspaceMembers}
+          workspaceLabels={workspaceLabels}
+          selectedAssignees={selectedAssignees}
+          selectedLabels={selectedLabels}
+          selectedPriorities={selectedPriorities}
+          onAssigneeChange={setSelectedAssignees}
+          onLabelChange={setSelectedLabels}
+          onPriorityChange={setSelectedPriorities}
+          onClearFilters={clearFilters}
+        />
       </div>
 
       {/* Board Content */}
@@ -563,8 +683,9 @@ export default function BoardPage() {
                 <BoardColumn
                   key={column.id}
                   column={column}
-                  cards={cards.filter((card) => card.column_id === column.id)}
+                  cards={filteredCards.filter((card) => card.column_id === column.id)}
                   boardId={boardId}
+                  workspaceId={workspaceId}
                   otherColumns={board.columns.filter((col) => col.id !== column.id)}
                   onRename={handleRenameColumn}
                   onDelete={handleDeleteColumn}

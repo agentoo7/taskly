@@ -35,6 +35,7 @@ interface BoardColumnProps {
   column: Column
   cards: CardType[]
   boardId: string
+  workspaceId: string
   otherColumns: Column[]
   onRename: (columnId: string, newName: string) => void
   onDelete: (columnId: string, action: 'delete-cards' | 'move-cards', targetColumnId?: string) => void
@@ -57,7 +58,7 @@ const api = {
   },
 }
 
-export function BoardColumn({ column, cards, boardId, otherColumns, onRename, onDelete, isArchived = false }: BoardColumnProps) {
+export function BoardColumn({ column, cards, boardId, workspaceId, otherColumns, onRename, onDelete, isArchived = false }: BoardColumnProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
@@ -74,7 +75,7 @@ export function BoardColumn({ column, cards, boardId, otherColumns, onRename, on
         board_id: boardId,
       }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['boards', boardId] })
+      queryClient.invalidateQueries({ queryKey: ['boards', boardId, 'cards'] })
       setQuickCreateTitle('')
       setShowQuickCreate(false)
       toast.success('Card created')
@@ -253,6 +254,7 @@ export function BoardColumn({ column, cards, boardId, otherColumns, onRename, on
           open={!!selectedCard}
           onOpenChange={(open) => !open && setSelectedCard(null)}
           boardId={boardId}
+          workspaceId={workspaceId}
         />
       )}
 

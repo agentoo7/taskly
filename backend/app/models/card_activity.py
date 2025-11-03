@@ -34,8 +34,8 @@ class CardActivity(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     # Relationships
-    card = relationship("Card", backref="activities")
-    user = relationship("User", backref="card_activities")
+    card = relationship("Card", back_populates="activities")
+    user = relationship("User", back_populates="card_activities")
 
     def __repr__(self) -> str:
         """String representation of CardActivity."""

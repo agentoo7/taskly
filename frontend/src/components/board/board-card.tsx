@@ -6,6 +6,7 @@
 
 import { Card as CardType, Priority } from '@/lib/types/card'
 import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Calendar, AlertCircle } from 'lucide-react'
 import { format, isPast, isToday } from 'date-fns'
 import { cn } from '@/lib/utils'
@@ -58,6 +59,23 @@ export function BoardCard({ card, onClick, isArchived = false }: BoardCardProps)
   const isOverdue = card.due_date && isPast(new Date(card.due_date))
   const isDueToday = card.due_date && isToday(new Date(card.due_date))
 
+  // Helper to get text color for labels
+  const getContrastColor = (hexColor: string): string => {
+    const r = parseInt(hexColor.slice(1, 3), 16)
+    const g = parseInt(hexColor.slice(3, 5), 16)
+    const b = parseInt(hexColor.slice(5, 7), 16)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return luminance > 0.5 ? '#000000' : '#FFFFFF'
+  }
+
+  // Show up to 3 assignees, +N for more
+  const visibleAssignees = card.assignees?.slice(0, 3) || []
+  const remainingAssignees = (card.assignees?.length || 0) - visibleAssignees.length
+
+  // Show up to 2 labels, +N for more
+  const visibleLabels = card.labels?.slice(0, 2) || []
+  const remainingLabels = (card.labels?.length || 0) - visibleLabels.length
+
   return (
     <div
       ref={setNodeRef}
@@ -108,8 +126,32 @@ export function BoardCard({ card, onClick, isArchived = false }: BoardCardProps)
       {/* Title */}
       <h4 className="text-sm font-medium line-clamp-2 mb-2">{card.title}</h4>
 
+      {/* Labels */}
+      {card.labels && card.labels.length > 0 && (
+        <div className="flex items-center gap-1 flex-wrap mb-2">
+          {visibleLabels.map((label) => (
+            <div
+              key={label.id}
+              className="text-xs font-medium px-2 py-0.5 rounded"
+              style={{
+                backgroundColor: label.color,
+                color: getContrastColor(label.color),
+              }}
+              title={label.name}
+            >
+              {label.name.length > 20 ? `${label.name.slice(0, 20)}...` : label.name}
+            </div>
+          ))}
+          {remainingLabels > 0 && (
+            <div className="text-xs font-medium px-2 py-0.5 rounded bg-muted">
+              +{remainingLabels} more
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Metadata Badges */}
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center gap-2 flex-wrap mb-2">
         {card.due_date && (
           <Badge
             variant="outline"
@@ -132,6 +174,25 @@ export function BoardCard({ card, onClick, isArchived = false }: BoardCardProps)
           </Badge>
         )}
       </div>
+
+      {/* Assignees */}
+      {card.assignees && card.assignees.length > 0 && (
+        <div className="flex items-center gap-1">
+          <div className="flex -space-x-2">
+            {visibleAssignees.map((assignee) => (
+              <Avatar key={assignee.id} className="h-6 w-6 border-2 border-background">
+                <AvatarImage src={assignee.avatar_url || undefined} alt={assignee.username} />
+                <AvatarFallback className="text-xs">
+                  {assignee.username.slice(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            ))}
+          </div>
+          {remainingAssignees > 0 && (
+            <span className="text-xs text-muted-foreground">+{remainingAssignees}</span>
+          )}
+        </div>
+      )}
     </div>
   )
 }
