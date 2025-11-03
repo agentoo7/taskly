@@ -589,4 +589,8 @@ Thí dụ log:
   Can you check and let me know? 🙏
 
 
+- After develop new user story, sometime docker is not rebuild and not e2e test -> need 
+- 
+
+
 
