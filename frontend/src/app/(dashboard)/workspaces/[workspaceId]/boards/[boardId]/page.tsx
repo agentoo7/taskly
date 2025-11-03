@@ -117,8 +117,23 @@ export default function BoardPage() {
     updateBoardMutation.mutate({ columns: updatedColumns })
   }
 
-  const handleDeleteColumn = (columnId: string) => {
+  const handleDeleteColumn = (
+    columnId: string,
+    action: 'delete-cards' | 'move-cards',
+    targetColumnId?: string
+  ) => {
     if (!board) return
+
+    // TODO: When cards are implemented in Story 2.4, handle card migration here
+    // if (action === 'move-cards' && targetColumnId) {
+    //   1. Fetch all cards in the column being deleted
+    //   2. Update their column_id to targetColumnId
+    //   3. Recalculate positions in target column
+    //   4. Save card updates via API
+    // }
+    // Note: For now (Story 2.3), we only delete the column structure
+    // Card migration logic will be added in Story 2.4 when card CRUD is implemented
+
     const updatedColumns = board.columns.filter((col) => col.id !== columnId)
     updateBoardMutation.mutate({ columns: updatedColumns })
   }
@@ -205,6 +220,8 @@ export default function BoardPage() {
                 <BoardColumn
                   key={column.id}
                   column={column}
+                  cardCount={0} // TODO: Update with actual card count when cards implemented in Story 2.4
+                  otherColumns={board.columns.filter((col) => col.id !== column.id)}
                   onRename={handleRenameColumn}
                   onDelete={handleDeleteColumn}
                 />

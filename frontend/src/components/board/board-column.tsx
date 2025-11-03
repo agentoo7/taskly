@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { DeleteColumnDialog } from './delete-column-dialog'
 
 interface Column {
   id: string
@@ -25,12 +26,15 @@ interface Column {
 
 interface BoardColumnProps {
   column: Column
+  cardCount?: number
+  otherColumns: Column[]
   onRename: (columnId: string, newName: string) => void
-  onDelete: (columnId: string) => void
+  onDelete: (columnId: string, action: 'delete-cards' | 'move-cards', targetColumnId?: string) => void
 }
 
-export function BoardColumn({ column, onRename, onDelete }: BoardColumnProps) {
+export function BoardColumn({ column, cardCount = 0, otherColumns, onRename, onDelete }: BoardColumnProps) {
   const [isEditing, setIsEditing] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [name, setName] = useState(column.name)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -52,10 +56,8 @@ export function BoardColumn({ column, onRename, onDelete }: BoardColumnProps) {
     setIsEditing(false)
   }
 
-  const handleDelete = () => {
-    if (confirm(`Delete "${column.name}" column?`)) {
-      onDelete(column.id)
-    }
+  const handleDeleteConfirm = (action: 'delete-cards' | 'move-cards', targetColumnId?: string) => {
+    onDelete(column.id, action, targetColumnId)
   }
 
   return (
@@ -116,7 +118,7 @@ export function BoardColumn({ column, onRename, onDelete }: BoardColumnProps) {
                 <Pencil className="mr-2 h-4 w-4" />
                 Rename Column
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+              <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-destructive">
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Column
               </DropdownMenuItem>
@@ -131,6 +133,16 @@ export function BoardColumn({ column, onRename, onDelete }: BoardColumnProps) {
           Drag cards here or click + to add
         </p>
       </div>
+
+      {/* Delete Column Dialog */}
+      <DeleteColumnDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        column={column}
+        cardCount={cardCount}
+        otherColumns={otherColumns}
+        onConfirmDelete={handleDeleteConfirm}
+      />
     </div>
   )
 }
