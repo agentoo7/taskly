@@ -794,3 +794,182 @@ Thí dụ log:
      ☐ Update QA Results section in story file
 
 
+
+⏺ 📁 File Gate (Quality Gate File) - Giải thích
+
+  File docs/qa/gates/2.5-drag-drop-cards.yml là Quality Gate Decision File (File Quyết định Cổng Chất lượng) - một tài liệu chính thức ghi
+  lại quyết định của QA về việc code có đủ tiêu chuẩn để release hay không.
+
+  ---
+  🎯 Mục đích (Purpose)
+
+  Đây là checkpoint chính thức trong quy trình phát triển phần mềm:
+  - Ghi lại quyết định: Code có PASS (đủ chuẩn) hay FAIL (cần sửa)?
+  - Tài liệu chất lượng: Lưu trữ bằng chứng về test coverage, issues, risks
+  - Truy vết (Audit trail): Ai review? Khi nào? Tìm thấy vấn đề gì?
+  - Giao tiếp team: Dev/PO/SM đều hiểu rõ tình trạng story
+
+  ---
+  📊 Cấu trúc File (YAML Format)
+
+  # 1. METADATA - Thông tin cơ bản
+  schema: 1                           # Phiên bản format
+  story: "2.5"                        # Story ID
+  story_title: "Drag-and-Drop Card Movement"
+  gate: CONCERNS                      # ⚠️ Quyết định: PASS/CONCERNS/FAIL/WAIVED
+  status_reason: "Core tốt nhưng còn 4 UX gaps"
+  reviewer: "Quinn (Test Architect)"
+  updated: "2025-11-03T20:35:00Z"    # Timestamp
+
+  # 2. QUALITY SCORE - Điểm chất lượng
+  quality_score: 85                   # 0-100 (85 = khá tốt)
+  expires: "2025-11-17T00:00:00Z"    # Gate hết hiệu lực sau 2 tuần
+
+  # 3. TOP ISSUES - Vấn đề cần fix
+  top_issues:
+    - id: "UX-001"
+      severity: medium                # low/medium/high
+      finding: "Archived board thiếu read-only banner"
+      suggested_action: "Thêm banner + disable drag sensors"
+      suggested_owner: dev            # ai phải fix: dev/sm/po
+      refs: ["file_path:line_number"] # Vị trí code
+
+  # 4. EVIDENCE - Bằng chứng
+  evidence:
+    tests_reviewed: 26                # Đã review 26 tests
+    risks_identified: 4               # Tìm thấy 4 risks
+    trace:
+      ac_covered: [1,2,3,4,5,6,7,8,9,14]  # AC nào đã có test
+      ac_gaps: [10,11,12,13]               # AC nào còn thiếu
+
+  # 5. NFR VALIDATION - Kiểm tra phi chức năng
+  nfr_validation:
+    security:
+      status: PASS
+      notes: "Authorization checks OK, no data leakage"
+    performance:
+      status: PASS
+      notes: "Optimistic UI, bulk queries, <2s tests"
+    reliability:
+      status: PASS
+    maintainability:
+      status: PASS
+
+  # 6. RECOMMENDATIONS - Khuyến nghị
+  recommendations:
+    immediate:  # Cần fix ngay
+      - action: "Complete archived board UX"
+        estimated_effort: "2-3 hours"
+    future:     # Fix sau cũng được
+      - action: "Add WebSocket integration tests"
+        estimated_effort: "4-6 hours"
+
+  # 7. RISK SUMMARY - Tổng hợp rủi ro
+  risk_summary:
+    totals:
+      critical: 0
+      high: 0
+      medium: 4  # 4 vấn đề mức trung bình
+      low: 0
+    must_fix:
+      - "Complete AC 10 (archived board UX)"
+
+  ---
+  🚦 Ý nghĩa của Gate Statuses
+
+  | Status      | Nghĩa                            | Hành động                              |
+  |-------------|----------------------------------|----------------------------------------|
+  | PASS ✅      | Code đạt chuẩn, sẵn sàng release | Merge và deploy                        |
+  | CONCERNS ⚠️ | Code tốt nhưng có vấn đề nhỏ     | Có thể release nhưng nên fix follow-up |
+  | FAIL ❌      | Code có vấn đề nghiêm trọng      | KHÔNG được release, phải fix ngay      |
+  | WAIVED 🟡   | Có issue nhưng PO chấp nhận      | Release với approval đặc biệt          |
+
+  ---
+  🎯 Trong trường hợp Story 2.5
+
+  Gate: CONCERNS (85/100)
+
+  Tại sao KHÔNG phải PASS?
+  - 4 Acceptance Criteria (10-13) chỉ hoàn thành một phần
+  - Thiếu archived board UX polish
+  - Chưa test mobile thực tế
+  - Bulk drag behavior chưa đầy đủ
+  - Undo timeout có minor memory leak
+
+  Tại sao KHÔNG phải FAIL?
+  - Core functionality (AC 1-8) hoàn hảo ✅
+  - Test coverage 86% - rất tốt ✅
+  - Architecture sạch, code chất lượng cao ✅
+  - Backend production-ready ✅
+  - Các vấn đề chỉ là UX polish, không phải lỗi nghiêm trọng
+
+  Quyết định:
+  ✅ Có thể mark story "Done" và release
+  ⚠️ Nên tạo follow-up story để fix 4 UX gaps
+
+  ---
+  📚 Sử dụng trong Team Workflow
+
+  1. Dev Team:
+
+  # Đọc gate file để biết cần fix gì
+  cat docs/qa/gates/2.5-drag-drop-cards.yml
+
+  # Check top_issues section
+  # Fix theo suggested_action
+  # Update code
+
+  2. Product Owner:
+
+  # Quyết định: Release ngay hay fix trước?
+  gate: CONCERNS          # Có thể release
+  quality_score: 85       # Điểm khá tốt
+  top_issues:             # 4 vấn đề medium
+    severity: medium      # → Quyết định: Release, fix sau
+
+  3. Tech Lead:
+
+  # Review risks trước khi deploy
+  risk_summary:
+    critical: 0    # ✅ OK
+    high: 0        # ✅ OK
+    medium: 4      # ⚠️ Monitor
+
+  # → Quyết định: Safe to deploy
+
+  ---
+  🔄 History Tracking
+
+  File này còn lưu lịch sử các lần review:
+
+  history:
+    - at: "2025-11-03T20:35:00Z"
+      gate: CONCERNS
+      note: "Initial review - core excellent, 4 UX gaps"
+
+    # Nếu re-review sau khi fix:
+    - at: "2025-11-05T10:00:00Z"
+      gate: PASS
+      note: "All UX gaps fixed, upgraded to PASS"
+
+  ---
+  💡 Tóm tắt
+
+  File gate là:
+  - 📋 Báo cáo chính thức về chất lượng code
+  - 🚦 Checkpoint quyết định release hay không
+  - 📊 Dashboard tóm tắt: tests, issues, risks, NFRs
+  - 📚 Tài liệu cho audit và compliance
+  - 🗺️ Roadmap cho việc fix bugs và improvements
+
+  Trong dự án Agile:
+  - Gate file = "Definition of Done" checker
+  - Giúp team quyết định objective, không cảm tính
+  - Lưu lại context cho tương lai (6 tháng sau vẫn hiểu tại sao release)
+
+  File của bạn (2.5-drag-drop-cards.yml):
+  - Kết luận: Code TỐT, có thể release ✅
+  - Nhưng nên fix 4 UX issues trong follow-up story 📝
+  - Quality score 85/100 - đạt chuẩn production 🎯
+
+
