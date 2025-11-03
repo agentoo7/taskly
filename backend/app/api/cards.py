@@ -115,6 +115,37 @@ async def get_card(
     return CardDetailResponse.model_validate(card)
 
 
+@router.patch("/cards/bulk-move", response_model=list[CardResponse])
+async def bulk_move_cards(
+    data: BulkCardMoveRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CardResponse]:
+    """
+    Move multiple cards to new column/position as a group.
+
+    Args:
+        data: Bulk move request data (card_ids, column_id, position)
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        List of updated cards
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if not workspace member,
+                      404 if cards not found, 400 if board is archived or column invalid
+    """
+    service = CardMovementService(db)
+    cards = await service.bulk_move_cards(
+        card_ids=data.card_ids,
+        target_column_id=data.column_id,
+        target_position=data.position,
+        moved_by=current_user.id,
+    )
+    return [CardResponse.model_validate(c) for c in cards]
+
+
 @router.patch("/cards/{card_id}", response_model=CardResponse)
 async def update_card(
     card_id: UUID,
@@ -200,34 +231,3 @@ async def move_card(
         moved_by=current_user.id,
     )
     return CardResponse.model_validate(card)
-
-
-@router.patch("/cards/bulk-move", response_model=list[CardResponse])
-async def bulk_move_cards(
-    data: BulkCardMoveRequest,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> list[CardResponse]:
-    """
-    Move multiple cards to new column/position as a group.
-
-    Args:
-        data: Bulk move request data (card_ids, column_id, position)
-        current_user: Current authenticated user
-        db: Database session
-
-    Returns:
-        List of updated cards
-
-    Raises:
-        HTTPException: 401 if not authenticated, 403 if not workspace member,
-                      404 if cards not found, 400 if board is archived or column invalid
-    """
-    service = CardMovementService(db)
-    cards = await service.bulk_move_cards(
-        card_ids=data.card_ids,
-        target_column_id=data.column_id,
-        target_position=data.position,
-        moved_by=current_user.id,
-    )
-    return [CardResponse.model_validate(c) for c in cards]

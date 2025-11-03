@@ -1,7 +1,10 @@
 """Main FastAPI application."""
 
+import structlog
 from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.auth import router as auth_router
@@ -17,6 +20,8 @@ from app.api.websockets import router as websockets_router
 from app.api.workspaces import router as workspaces_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+
+logger = structlog.get_logger()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -43,6 +48,21 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 async def startup_event() -> None:
     """Configure application on startup."""
     configure_logging()
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with detailed logging."""
+    logger.error(
+        "validation_error",
+        path=request.url.path,
+        errors=exc.errors(),
+        body=await request.body(),
+    )
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
 
 
 # Add no-cache middleware (first)
