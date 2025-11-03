@@ -8,7 +8,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_user
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.card import CardCreate, CardDetailResponse, CardResponse, CardUpdate
+from app.schemas.card import (
+    BulkCardMoveRequest,
+    CardCreate,
+    CardDetailResponse,
+    CardMoveRequest,
+    CardResponse,
+    CardUpdate,
+)
+from app.services.card_movement_service import CardMovementService
 from app.services.card_service import CardService
 
 router = APIRouter(prefix="/api", tags=["cards"])
@@ -159,3 +167,67 @@ async def delete_card(
     """
     service = CardService(db)
     await service.delete_card(card_id=card_id, user_id=current_user.id)
+
+
+@router.patch("/cards/{card_id}/move", response_model=CardResponse)
+async def move_card(
+    card_id: UUID,
+    data: CardMoveRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardResponse:
+    """
+    Move card to new column/position with automatic position recalculation.
+
+    Args:
+        card_id: UUID of card to move
+        data: Move request data (column_id, position)
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        Updated card with new position
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if not workspace member,
+                      404 if card not found, 400 if board is archived or column invalid
+    """
+    service = CardMovementService(db)
+    card = await service.move_card(
+        card_id=card_id,
+        target_column_id=data.column_id,
+        target_position=data.position,
+        moved_by=current_user.id,
+    )
+    return CardResponse.model_validate(card)
+
+
+@router.patch("/cards/bulk-move", response_model=list[CardResponse])
+async def bulk_move_cards(
+    data: BulkCardMoveRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[CardResponse]:
+    """
+    Move multiple cards to new column/position as a group.
+
+    Args:
+        data: Bulk move request data (card_ids, column_id, position)
+        current_user: Current authenticated user
+        db: Database session
+
+    Returns:
+        List of updated cards
+
+    Raises:
+        HTTPException: 401 if not authenticated, 403 if not workspace member,
+                      404 if cards not found, 400 if board is archived or column invalid
+    """
+    service = CardMovementService(db)
+    cards = await service.bulk_move_cards(
+        card_ids=data.card_ids,
+        target_column_id=data.column_id,
+        target_position=data.position,
+        moved_by=current_user.id,
+    )
+    return [CardResponse.model_validate(c) for c in cards]

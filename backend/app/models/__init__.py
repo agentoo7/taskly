@@ -2,6 +2,7 @@
 
 from app.models.board import Board
 from app.models.card import Card, PriorityEnum
+from app.models.card_activity import CardActivity
 from app.models.card_assignee import CardAssignee
 from app.models.git_repository import GitRepository
 from app.models.pull_request import PRStatusEnum, PullRequest
@@ -24,6 +25,7 @@ __all__ = [
     "AuditActionEnum",
     "Board",
     "Card",
+    "CardActivity",
     "PriorityEnum",
     "CardAssignee",
     "Sprint",

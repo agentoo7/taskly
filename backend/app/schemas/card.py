@@ -81,3 +81,42 @@ class CardDetailResponse(CardResponse):
 
     class Config:
         from_attributes = True
+
+
+class CardMoveRequest(BaseModel):
+    """Schema for moving a card to a new column/position."""
+
+    column_id: UUID = Field(..., description="Target column UUID")
+    position: int = Field(..., ge=0, description="Target position in column (0-indexed)")
+
+    @field_validator("position")
+    @classmethod
+    def validate_position(cls, v: int) -> int:
+        """Validate position is non-negative."""
+        if v < 0:
+            raise ValueError("Position must be non-negative")
+        return v
+
+
+class BulkCardMoveRequest(BaseModel):
+    """Schema for moving multiple cards to a new column/position."""
+
+    card_ids: list[UUID] = Field(..., min_length=1, description="List of card UUIDs to move")
+    column_id: UUID = Field(..., description="Target column UUID")
+    position: int = Field(..., ge=0, description="Starting position in column (0-indexed)")
+
+    @field_validator("card_ids")
+    @classmethod
+    def validate_card_ids(cls, v: list[UUID]) -> list[UUID]:
+        """Validate card_ids is not empty."""
+        if not v:
+            raise ValueError("At least one card ID must be provided")
+        return v
+
+    @field_validator("position")
+    @classmethod
+    def validate_position(cls, v: int) -> int:
+        """Validate position is non-negative."""
+        if v < 0:
+            raise ValueError("Position must be non-negative")
+        return v

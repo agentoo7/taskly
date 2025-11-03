@@ -16,7 +16,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useSortable } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { DeleteColumnDialog } from './delete-column-dialog'
 import { BoardCard } from './board-card'
 import { CardDetailModal } from './card-detail-modal'
@@ -36,6 +38,7 @@ interface BoardColumnProps {
   otherColumns: Column[]
   onRename: (columnId: string, newName: string) => void
   onDelete: (columnId: string, action: 'delete-cards' | 'move-cards', targetColumnId?: string) => void
+  isArchived?: boolean
 }
 
 // Mock API client - will be replaced with actual implementation
@@ -54,7 +57,7 @@ const api = {
   },
 }
 
-export function BoardColumn({ column, cards, boardId, otherColumns, onRename, onDelete }: BoardColumnProps) {
+export function BoardColumn({ column, cards, boardId, otherColumns, onRename, onDelete, isArchived = false }: BoardColumnProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showQuickCreate, setShowQuickCreate] = useState(false)
@@ -82,6 +85,10 @@ export function BoardColumn({ column, cards, boardId, otherColumns, onRename, on
   })
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: column.id,
+  })
+
+  const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
     id: column.id,
   })
 
@@ -220,16 +227,23 @@ export function BoardColumn({ column, cards, boardId, otherColumns, onRename, on
       )}
 
       {/* Cards Container */}
-      <div className="space-y-2 flex-1 overflow-y-auto min-h-[200px]">
-        {cards.length > 0 ? (
-          cards.map((card) => (
-            <BoardCard key={card.id} card={card} onClick={() => setSelectedCard(card)} />
-          ))
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-8">
-            Drag cards here or click + to add
-          </p>
-        )}
+      <div
+        ref={setDroppableNodeRef}
+        className={`space-y-2 flex-1 overflow-y-auto min-h-[200px] rounded-md transition-colors ${
+          isOver ? 'bg-primary/5 ring-2 ring-primary/20' : ''
+        }`}
+      >
+        <SortableContext items={cards.map((card) => `card-${card.id}`)} strategy={verticalListSortingStrategy}>
+          {cards.length > 0 ? (
+            cards.map((card) => (
+              <BoardCard key={card.id} card={card} onClick={() => setSelectedCard(card)} isArchived={isArchived} />
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              {isArchived ? 'No cards in this column' : 'Drag cards here or click + to add'}
+            </p>
+          )}
+        </SortableContext>
       </div>
 
       {/* Card Detail Modal */}
