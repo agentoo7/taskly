@@ -28,6 +28,7 @@ import {
   horizontalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { v4 as uuidv4 } from 'uuid'
+import { Card } from '@/lib/types/card'
 
 interface Column {
   id: string
@@ -56,6 +57,13 @@ export default function BoardPage() {
   const { data: board, isLoading } = useQuery({
     queryKey: ['boards', boardId],
     queryFn: () => api.get<Board>(`/api/boards/${boardId}`),
+  })
+
+  // Fetch cards for the board
+  const { data: cards = [] } = useQuery({
+    queryKey: ['boards', boardId, 'cards'],
+    queryFn: () => api.get<Card[]>(`/api/boards/${boardId}/cards`),
+    enabled: !!boardId,
   })
 
   const sensors = useSensors(
@@ -220,7 +228,8 @@ export default function BoardPage() {
                 <BoardColumn
                   key={column.id}
                   column={column}
-                  cardCount={0} // TODO: Update with actual card count when cards implemented in Story 2.4
+                  cards={cards.filter((card) => card.column_id === column.id)}
+                  boardId={boardId}
                   otherColumns={board.columns.filter((col) => col.id !== column.id)}
                   onRename={handleRenameColumn}
                   onDelete={handleDeleteColumn}
