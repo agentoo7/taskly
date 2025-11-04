@@ -2,16 +2,16 @@
 WebSocket endpoints for real-time updates.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_jwt_token
 from app.models.user import User
-from app.websockets.manager import manager
 from app.repositories.user_repository import UserRepository
 from app.services.workspace_service import WorkspaceService
+from app.websockets.manager import manager
 
 logger = structlog.get_logger(__name__)
 
@@ -19,8 +19,7 @@ router = APIRouter()
 
 
 async def get_current_user_ws(
-    token: str = Query(..., alias="token"),
-    db: AsyncSession = Depends(get_db)
+    token: str = Query(..., alias="token"), db: AsyncSession = Depends(get_db)
 ) -> User:
     """
     Authenticate WebSocket connection via query parameter token.
@@ -47,9 +46,7 @@ async def get_current_user_ws(
 
 @router.websocket("/ws/workspaces/{workspace_id}")
 async def workspace_websocket(
-    websocket: WebSocket,
-    workspace_id: str,
-    db: AsyncSession = Depends(get_db)
+    websocket: WebSocket, workspace_id: str, db: AsyncSession = Depends(get_db)
 ):
     """
     WebSocket endpoint for workspace real-time updates.
@@ -87,14 +84,18 @@ async def workspace_websocket(
                 return
         except Exception as e:
             logger.error("websocket.auth.failed", error=str(e))
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Authentication failed"
+            )
             return
 
         # Verify user has access to this workspace
         workspace_service = WorkspaceService(db)
         is_member = await workspace_service.check_workspace_member(workspace_id, user.id)
         if not is_member:
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Not a workspace member")
+            await websocket.close(
+                code=status.WS_1008_POLICY_VIOLATION, reason="Not a workspace member"
+            )
             return
 
         # Connect to workspace room
@@ -104,12 +105,9 @@ async def workspace_websocket(
         await manager.send_personal_message(
             {
                 "event": "connected",
-                "data": {
-                    "workspace_id": workspace_id,
-                    "message": "Connected to workspace updates"
-                }
+                "data": {"workspace_id": workspace_id, "message": "Connected to workspace updates"},
             },
-            websocket
+            websocket,
         )
 
         # Keep connection alive and listen for client messages (optional)
@@ -121,23 +119,16 @@ async def workspace_websocket(
                     "websocket.message.received",
                     workspace_id=workspace_id,
                     user_id=str(user.id),
-                    message=data
+                    message=data,
                 )
             except WebSocketDisconnect:
                 break
 
     except WebSocketDisconnect:
-        logger.info(
-            "websocket.disconnect",
-            workspace_id=workspace_id,
-            user_id=str(user.id)
-        )
+        logger.info("websocket.disconnect", workspace_id=workspace_id, user_id=str(user.id))
     except Exception as e:
         logger.error(
-            "websocket.error",
-            workspace_id=workspace_id,
-            user_id=str(user.id),
-            error=str(e)
+            "websocket.error", workspace_id=workspace_id, user_id=str(user.id), error=str(e)
         )
     finally:
         manager.disconnect(websocket, workspace_id)

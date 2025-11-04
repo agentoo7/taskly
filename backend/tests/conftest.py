@@ -20,26 +20,13 @@ TEST_DATABASE_URL = os.getenv(
     "postgresql+asyncpg://taskly:taskly@postgres:5432/taskly_test"
 )
 
-# Create test engine
-test_engine = create_async_engine(
-    TEST_DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-)
-
-# Create test session factory
-TestSessionLocal = async_sessionmaker(
-    test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
 
 @pytest.fixture(scope="function")
 def event_loop():
     """Create an instance of the default event loop for each test."""
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
@@ -47,6 +34,20 @@ def event_loop():
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test."""
+    # Create engine and session factory for this test
+    test_engine = create_async_engine(
+        TEST_DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        poolclass=None,  # Use NullPool to avoid connection pool issues across event loops
+    )
+
+    TestSessionLocal = async_sessionmaker(
+        test_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
     # Create all tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -59,6 +60,9 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     # Drop all tables after test
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+
+    # Dispose of engine
+    await test_engine.dispose()
 
 
 @pytest_asyncio.fixture(scope="function")

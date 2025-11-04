@@ -1,0 +1,139 @@
+# Quality Gate Decision for Story 2.4: Card Creation & Basic Metadata
+schema: 1
+story: "2.4"
+story_title: "Card Creation & Basic Metadata"
+gate: CONCERNS
+status_reason: "Implementation is functionally complete with solid backend testing, but has security concerns (JWT in localStorage, no rate limiting) and missing frontend/E2E tests. AC9 partially implemented (overdue logic doesn't check Done column). Ready for MVP with documented technical debt."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-11-03T00:00:00Z"
+
+waiver: { active: false }
+
+# Top Issues
+top_issues:
+  - id: "SEC-001"
+    severity: medium
+    finding: "JWT tokens stored in localStorage (XSS vulnerable)"
+    suggested_action: "Move to httpOnly cookies before production deployment"
+    suggested_owner: "dev"
+    refs: ["frontend/src/components/board/card-detail-modal.tsx:40", "frontend/src/components/board/board-column.tsx:48"]
+
+  - id: "SEC-002"
+    severity: medium
+    finding: "No rate limiting on card creation endpoint"
+    suggested_action: "Add rate limiting middleware to prevent spam"
+    suggested_owner: "dev"
+    refs: ["backend/app/api/cards.py:17-51"]
+
+  - id: "TEST-001"
+    severity: medium
+    finding: "Missing E2E tests for card workflow (mentioned in Task 13)"
+    suggested_action: "Add Playwright E2E test for complete card creation/editing flow"
+    suggested_owner: "dev"
+    refs: ["docs/stories/2.4.card-creation.md:162"]
+
+  - id: "TEST-002"
+    severity: low
+    finding: "No frontend component tests for React components"
+    suggested_action: "Add component tests for priority-selector, markdown-editor, due-date-picker"
+    suggested_owner: "dev"
+    refs: ["frontend/src/components/board/*.tsx"]
+
+  - id: "REQ-001"
+    severity: low
+    finding: "AC9 incomplete: Overdue indicator doesn't check if column is Done"
+    suggested_action: "Pass column metadata to BoardCard component to properly implement Done column check"
+    suggested_owner: "dev"
+    refs: ["frontend/src/components/board/board-card.tsx:29-30"]
+
+  - id: "STD-001"
+    severity: low
+    finding: "Missing correlation IDs in structured logs (coding standard Rule 7)"
+    suggested_action: "Add correlation_id to all log statements"
+    suggested_owner: "dev"
+    refs: ["backend/app/services/card_service.py"]
+
+# Risk Summary
+risk_summary:
+  totals:
+    critical: 0
+    high: 0
+    medium: 3
+    low: 3
+  recommendations:
+    must_fix:
+      - "Address JWT localStorage and rate limiting before production"
+    monitor:
+      - "Track technical debt for E2E tests and AC9 completion"
+
+# Extended Quality Metrics
+quality_score: 75
+expires: "2025-11-17T00:00:00Z"
+
+evidence:
+  tests_reviewed: 20
+  risks_identified: 6
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
+    ac_gaps: [9]
+
+# NFR Validation
+nfr_validation:
+  security:
+    status: CONCERNS
+    notes: "JWT in localStorage (XSS risk), no rate limiting, markdown sanitization not explicitly tested. Authentication and authorization properly implemented."
+  performance:
+    status: PASS
+    notes: "Async operations, proper indexing, optimistic updates, no N+1 queries detected."
+  reliability:
+    status: PASS
+    notes: "Transaction management with begin_nested(), proper error handling and rollback, structured logging."
+  maintainability:
+    status: PASS
+    notes: "Clean architecture (API/service/schema layers), comprehensive docstrings, type hints throughout. Minor: inline API clients duplicated but marked as intentional mock."
+
+# Recommendations
+recommendations:
+  immediate:
+    - action: "Move JWT from localStorage to httpOnly cookies"
+      refs: ["frontend/src/components/board/card-detail-modal.tsx:40", "frontend/src/components/board/board-column.tsx:48"]
+    - action: "Add rate limiting to card creation endpoint"
+      refs: ["backend/app/api/cards.py:17"]
+    - action: "Complete AC9 by passing column metadata to BoardCard"
+      refs: ["frontend/src/components/board/board-card.tsx:29"]
+
+  future:
+    - action: "Add E2E test for card creation/editing workflow"
+      refs: ["frontend/e2e/"]
+    - action: "Add frontend component tests"
+      refs: ["frontend/src/components/board/*.test.tsx"]
+    - action: "Create centralized API client (replacing inline mocks)"
+      refs: ["frontend/src/lib/api/client.ts"]
+    - action: "Add correlation IDs to structured logs"
+      refs: ["backend/app/services/card_service.py"]
+    - action: "Replace browser confirm() with AlertDialog"
+      refs: ["frontend/src/components/board/card-detail-modal.tsx:136"]
+    - action: "Replace datetime.utcnow() with datetime.now(timezone.utc)"
+      refs: ["backend/app/services/card_service.py:121"]
+    - action: "Add test for markdown XSS scenarios"
+      refs: ["backend/tests/integration/test_cards_api.py"]
+
+# Additional Context
+notes: |
+  The implementation demonstrates strong technical execution with 20 backend tests,
+  proper async patterns, and clean architecture. The CONCERNS gate is due to security
+  best practices (JWT storage, rate limiting) and test coverage gaps (E2E, frontend
+  components), not functional defects.
+
+  Key strengths:
+  - Excellent backend test coverage (8 unit + 12 integration)
+  - Proper transaction management and error handling
+  - Accessibility features in frontend components
+  - WebSocket real-time updates with timestamps
+
+  Intentional technical debt (marked with "mock" comments):
+  - Inline API clients (will be centralized in future story)
+
+  The code is production-ready for MVP with these documented concerns. All issues
+  are either security hardening, test coverage improvements, or minor scope gaps
+  that can be addressed in follow-up work.

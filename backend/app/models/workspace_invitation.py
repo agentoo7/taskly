@@ -2,7 +2,8 @@
 
 import enum
 import secrets
-from datetime import datetime, timedelta, timezone
+import uuid
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import (
     Column,
@@ -16,7 +17,6 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-import uuid
 
 from app.core.database import Base
 from app.models.workspace_member import RoleEnum
@@ -51,16 +51,14 @@ class WorkspaceInvitation(Base):
         nullable=False,
         default=lambda: secrets.token_urlsafe(32),
     )
-    invited_by = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    invited_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     delivery_status = Column(
         Enum(DeliveryStatusEnum), nullable=False, default=DeliveryStatusEnum.PENDING
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc) + timedelta(days=7),
+        default=lambda: datetime.now(UTC) + timedelta(days=7),
     )
     accepted_at = Column(DateTime(timezone=True))
 
@@ -70,9 +68,7 @@ class WorkspaceInvitation(Base):
 
     # Constraints and indexes
     __table_args__ = (
-        UniqueConstraint(
-            "workspace_id", "email", name="uq_workspace_email_invitation"
-        ),
+        UniqueConstraint("workspace_id", "email", name="uq_workspace_email_invitation"),
         Index("ix_workspace_invitations_workspace_id", "workspace_id"),
         Index("ix_workspace_invitations_email", "email"),
         Index("ix_workspace_invitations_expires_at", "expires_at"),
@@ -81,7 +77,7 @@ class WorkspaceInvitation(Base):
     @property
     def is_expired(self) -> bool:
         """Check if invitation has expired."""
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     @property
     def is_accepted(self) -> bool:

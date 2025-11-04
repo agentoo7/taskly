@@ -1,19 +1,29 @@
 """Main FastAPI application."""
 
+import structlog
 from fastapi import FastAPI, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.api.assignees import router as assignees_router
 from app.api.auth import router as auth_router
+from app.api.boards import router as boards_router
+from app.api.cards import router as cards_router
 from app.api.health import router as health_router
 from app.api.invitations import router as invitations_router
+from app.api.labels import router as labels_router
 from app.api.members import router as members_router
 from app.api.middleware import CorrelationIDMiddleware
 from app.api.users import router as users_router
+from app.api.webhooks import router as webhooks_router
 from app.api.websockets import router as websockets_router
 from app.api.workspaces import router as workspaces_router
 from app.core.config import settings
 from app.core.logging import configure_logging
+
+logger = structlog.get_logger()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -42,13 +52,22 @@ async def startup_event() -> None:
     configure_logging()
 
 
-# Add no-cache middleware (first)
-app.add_middleware(NoCacheMiddleware)
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with detailed logging."""
+    logger.error(
+        "validation_error",
+        path=request.url.path,
+        errors=exc.errors(),
+        body=await request.body(),
+    )
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors()},
+    )
 
-# Add correlation ID middleware (before CORS)
-app.add_middleware(CorrelationIDMiddleware)
 
-# Configure CORS
+# Configure CORS (must be first to handle preflight requests)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -58,13 +77,24 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
+# Add correlation ID middleware (after CORS)
+app.add_middleware(CorrelationIDMiddleware)
+
+# Add no-cache middleware (last)
+app.add_middleware(NoCacheMiddleware)
+
 # Include routers
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(auth_router, prefix="/auth", tags=["authentication"])
 app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(workspaces_router)
+app.include_router(boards_router)
+app.include_router(cards_router)
+app.include_router(labels_router)
+app.include_router(assignees_router)
 app.include_router(invitations_router)
 app.include_router(members_router)
+app.include_router(webhooks_router)
 app.include_router(websockets_router, tags=["websockets"])
 
 

@@ -51,6 +51,10 @@ class User(Base):
         back_populates="assignees",
         viewonly=True,
     )
+    card_activities = relationship(
+        "CardActivity",
+        back_populates="user",
+    )
 
     def __repr__(self) -> str:
         """String representation of User."""

@@ -4,6 +4,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.card import Card
 from app.repositories.base import BaseRepository
@@ -62,3 +63,17 @@ class CardRepository(BaseRepository[Card]):
         """
         result = await self.session.execute(select(Card).where(Card.created_by == user_id))
         return list(result.scalars().all())
+
+    async def get_with_board(self, card_id: UUID) -> Card | None:
+        """Get card with board relationship loaded.
+
+        Args:
+            card_id: Card UUID
+
+        Returns:
+            Card instance with board loaded or None
+        """
+        result = await self.session.execute(
+            select(Card).where(Card.id == card_id).options(selectinload(Card.board))
+        )
+        return result.scalar_one_or_none()

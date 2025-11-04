@@ -114,6 +114,14 @@ class InvitationService:
             self.db.add(invitation)
             invitations.append(invitation)
 
+            logger.info(
+                "invitation.created",
+                workspace_id=str(workspace_id),
+                email=email_lower,
+                role=role.value,  # Log the actual role value
+                invited_by=str(inviter_id),
+            )
+
         await self.db.commit()
 
         # Refresh all invitations to get generated fields
@@ -262,6 +270,13 @@ class InvitationService:
 
         # Add user to workspace
         from sqlalchemy.orm import attributes
+
+        logger.info(
+            "invitation.accept.assigning_role",
+            invitation_id=str(invitation.id),
+            invitation_role=invitation.role.value,  # Log role from invitation
+            user_id=str(user_id),
+        )
 
         member = WorkspaceMember(
             workspace_id=UUID(str(invitation.workspace_id)),

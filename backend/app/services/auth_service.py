@@ -1,7 +1,6 @@
 """Authentication service for GitHub OAuth and JWT token management."""
 
-import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -61,7 +60,9 @@ class AuthService:
             data = response.json()
 
             if "access_token" not in data:
-                raise ValueError(f"GitHub OAuth error: {data.get('error_description', 'Unknown error')}")
+                raise ValueError(
+                    f"GitHub OAuth error: {data.get('error_description', 'Unknown error')}"
+                )
 
             return data["access_token"]
 
@@ -89,9 +90,7 @@ class AuthService:
             response.raise_for_status()
             return response.json()
 
-    async def create_or_update_user(
-        self, github_user: dict[str, Any], access_token: str
-    ) -> User:
+    async def create_or_update_user(self, github_user: dict[str, Any], access_token: str) -> User:
         """
         Create or update user from GitHub profile.
 
@@ -162,7 +161,7 @@ class AuthService:
         refresh_token_record = RefreshToken(
             user_id=user.id,
             token_hash=hash_token(refresh_token),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+            expires_at=datetime.now(UTC) + timedelta(days=7),
             revoked=False,
         )
         self.db.add(refresh_token_record)
@@ -229,7 +228,7 @@ class AuthService:
             raise ValueError("Refresh token not found or has been revoked")
 
         # Check if refresh token is expired
-        if refresh_token_record.expires_at < datetime.now(timezone.utc):
+        if refresh_token_record.expires_at < datetime.now(UTC):
             raise ValueError("Refresh token expired")
 
         # Generate new access token

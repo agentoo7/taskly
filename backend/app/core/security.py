@@ -2,10 +2,11 @@
 
 import hashlib
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import jwt
+
 from app.core.config import settings
 
 
@@ -20,7 +21,7 @@ def create_access_token(user_id: uuid.UUID, correlation_id: str | None = None) -
     Returns:
         Encoded JWT access token
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + timedelta(minutes=15)
 
     payload: dict[str, Any] = {
@@ -46,7 +47,7 @@ def create_refresh_token(user_id: uuid.UUID) -> str:
     Returns:
         Encoded JWT refresh token
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expire = now + timedelta(days=7)
 
     payload: dict[str, Any] = {

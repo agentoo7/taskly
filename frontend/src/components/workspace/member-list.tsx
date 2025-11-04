@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MoreVertical, Shield, User, Trash2 } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
@@ -54,20 +54,29 @@ interface MemberListProps {
 
 export function MemberList({ workspaceId, currentUserId, currentUserRole }: MemberListProps) {
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(1)
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null)
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const pageSize = 50
 
-  // Fetch members
+  // Fetch members with pagination
   const { data: members = [], isLoading } = useQuery<Member[]>({
-    queryKey: ['workspace', workspaceId, 'members', search],
+    queryKey: ['workspace', workspaceId, 'members', search, page],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (search) params.append('search', search)
+      params.append('limit', pageSize.toString())
+      params.append('offset', ((page - 1) * pageSize).toString())
 
       return api.get<Member[]>(`/api/workspaces/${workspaceId}/members?${params}`)
     },
   })
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setPage(1)
+  }, [search])
 
   // Update role mutation
   const { mutate: updateRole, isPending: isUpdatingRole } = useMutation({
@@ -251,8 +260,35 @@ export function MemberList({ workspaceId, currentUserId, currentUserRole }: Memb
           </Table>
         </div>
 
+        {/* Pagination Controls (AC 20) */}
+        {members.length >= pageSize && (
+          <div className="flex items-center justify-between border-t pt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {(page - 1) * pageSize + 1} - {(page - 1) * pageSize + members.length} members
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1 || isLoading}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => p + 1)}
+                disabled={members.length < pageSize || isLoading}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="text-sm text-muted-foreground">
-          {members.length} member{members.length !== 1 ? 's' : ''} in workspace
+          {members.length} member{members.length !== 1 ? 's' : ''} on this page
         </div>
       </div>
 

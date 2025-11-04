@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMAD Method Guide - Detailed Workflow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        header p {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .section h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section h2::before {
+            content: "▶";
+            margin-right: 10px;
+            font-size: 0.8em;
+        }
+        
+        .section h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        
+        .section h4 {
+            color: #667eea;
+            font-size: 1.2em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .highlight {
+            background: linear-gradient(120deg, #ffd700 0%, #ffed4e 100%);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .mermaid-container {
+            background: white;
+            padding: 30px;
+            margin: 25px 0;
+            border-radius: 10px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+        
+        .agent-card {
+            background: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .agent-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+        
+        .agent-card h4 {
+            color: #667eea;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        
+        .io-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .io-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        .io-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .io-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .io-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-top: 10px;
+        }
+        
+        li {
+            margin: 10px 0;
+        }
+        
+        .nav-toc {
+            background: #f1f3f5;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .nav-toc h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .nav-toc a {
+            color: #667eea;
+            text-decoration: none;
+            display: block;
+            padding: 8px 0;
+            transition: color 0.3s;
+        }
+        
+        .nav-toc a:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        
+        .workflow-step {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .step-number {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 20px;
+            flex-shrink: 0;
+        }
+        
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d63384;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 BMAD Method</h1>
+            <p>Detailed Workflow with Input/Output for Each Agent</p>
+        </header>
+        
+        <div class="content">
+            <div class="nav-toc">
+                <h3>📑 Table of Contents</h3>
+                <a href="#overview">1. BMAD Method Overview</a>
+                <a href="#complete-workflow">2. Complete Workflow Diagram</a>
+                <a href="#planning-agents">3. Planning Phase Agents (Input/Output)</a>
+                <a href="#development-agents">4. Development Phase Agents (Input/Output)</a>
+                <a href="#detailed-commands">5. Detailed Commands for Each Agent</a>
+            </div>
+
+            <div class="section" id="overview">
+                <h2>BMAD Method Overview</h2>
+                <p>BMAD is a <span class="highlight">Sprint and Multi-Agent</span> methodology with two main phases:</p>
+                
+                <div class="agent-card">
+                    <h4>🎯 Phase 1: Agentic Planning</h4>
+                    <p>Specialized agents (Analyst, PM, Architect, UX) create detailed and consistent documents.</p>
+                    <ul>
+                        <li>📊 Business Analyst → Project Brief</li>
+                        <li>📋 Project Manager → <strong>PRD (Product Requirements Document)</strong></li>
+                        <li>🏗️ Software Architect → Architecture Document</li>
+                        <li>🎨 UX Expert → Frontend Specification</li>
+                        <li>📦 Product Owner → Validation & Sharding</li>
+                    </ul>
+                </div>
+                
+                <div class="agent-card">
+                    <h4>💻 Phase 2: Context-Engineered Development</h4>
+                    <p>Iterative loop between 3 agents: SM, Developer, QA with story files as context packages.</p>
+                    <ul>
+                        <li>🎯 Scrum Master → User Stories</li>
+                        <li>👨‍💻 Developer → Code Implementation</li>
+                        <li>🧪 QA → Quality Assurance & Testing</li>
+                    </ul>
+                </div>
+                
+                <div class="warning-box">
+                    <strong>⚠️ Important Note:</strong> The Project Manager's output is <strong>PRD (Product Requirements Document)</strong>, not BRD. PRD is a detailed requirements document that the development team will use.
+                </div>
+            </div>
+
+            <div class="section" id="complete-workflow">
+                <h2>Complete BMAD Workflow</h2>
+                
+                <h3>🔄 Two-Phase Workflow Overview</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph TB
+    subgraph Planning["🎯 PLANNING PHASE - Web UI"]
+        User["👤 User<br/>Project Idea"]
+        
+        BA["📊 Business Analyst<br/>(Analyst Agent)"]
+        PM["📋 Project Manager<br/>(PM Agent)"]
+        SA["🏗️ Software Architect<br/>(Architect Agent)"]
+        UX["🎨 UX Expert<br/>(UX Agent)"]
+        PO["📦 Product Owner<br/>(PO Agent)"]
+        
+        Brief["📄 project-brief.md<br/>• Overview<br/>• Business Objectives<br/>• Scope"]
+        PRD["📋 prd.md<br/>• Functional Requirements<br/>• Non-Functional Requirements<br/>• Epics & Stories"]
+        Arch["🏗️ architecture.md<br/>• System Design<br/>• Tech Stack<br/>• Constraints"]
+        FrontSpec["🎨 frontend-spec.md<br/>• UI/UX Guidelines<br/>• Component Specs<br/>• API Integration"]
+        
+        ShardedDocs["📂 Sharded Documents<br/>• Epic Files<br/>• Component Docs"]
+    end
+    
+    subgraph Development["💻 DEVELOPMENT PHASE - IDE"]
+        SM["🎯 Scrum Master<br/>(SM Agent)"]
+        Dev["👨‍💻 Developer<br/>(Dev Agent)"]
+        QA["🧪 QA Engineer<br/>(QA Agent)"]
+        
+        Story["📝 User Story<br/>{epic}.{story}.story.md"]
+        Code["💾 Code<br/>Implementation"]
+        TestReport["📊 Test Report<br/>QA Gate"]
+    end
+    
+    User -->|Interactive Mode| BA
+    BA -->|Creates| Brief
+    Brief -->|Input| PM
+    PM -->|Creates| PRD
+    PRD -->|Input| SA
+    SA -->|Creates| Arch
+    Arch -->|Input| UX
+    UX -->|Creates| FrontSpec
+    
+    Brief & PRD & Arch & FrontSpec -->|Validate| PO
+    PO -->|Shards| ShardedDocs
+    
+    ShardedDocs -->|Input| SM
+    SM -->|Drafts| Story
+    Story -->|Implements| Dev
+    Dev -->|Produces| Code
+    Code -->|Reviews| QA
+    QA -->|Creates| TestReport
+    
+    TestReport -->|Pass ✅| SM
+    TestReport -->|Fail ❌| Dev
+    
+    style Planning fill:#e3f2fd
+    style Development fill:#f3e5f5
+    style User fill:#fff9c4
+    style Brief fill:#c8e6c9
+    style PRD fill:#ffccbc
+    style Arch fill:#b2dfdb
+    style FrontSpec fill:#d1c4e9
+    style Story fill:#ffe0b2
+    style Code fill:#c5e1a5
+    style TestReport fill:#ffccbc
+                    </div>
+                </div>
+            </div>
+
+            <div class="section" id="planning-agents">
+                <h2>Planning Phase - Detailed Input/Output</h2>
+                
+                <h3>1️⃣ Business Analyst (Analyst Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["👤 User Input<br/>• Project Idea<br/>• Requirements<br/>• Interactive Q&A"]
+    B["📊 Analyst Agent<br/>Commands:<br/>*analyst<br/>*brainstorm"]
+    C["📄 Output<br/>project-brief.md<br/>• Overview<br/>• Business Objectives<br/>• Functions<br/>• Scope<br/>• Target Users"]
+    
+    A -->|Interactive Mode| B
+    B -->|Creates| C
+    
+    style A fill:#fff9c4
+    style B fill:#e1f5fe
+    style C fill:#c8e6c9
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Business Analyst</strong></td>
+                        <td>
+                            • User's project idea<br/>
+                            • Interactive Q&A responses<br/>
+                            • Domain context
+                        </td>
+                        <td>
+                            <code>*analyst</code><br/>
+                            <code>*brainstorm</code>
+                        </td>
+                        <td>
+                            <strong>project-brief.md</strong><br/>
+                            • Project overview<br/>
+                            • Business objectives<br/>
+                            • Functions & features<br/>
+                            • Project scope<br/>
+                            • Target users
+                        </td>
+                    </tr>
+                </table>
+
+                <h3>2️⃣ Project Manager (PM Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["📄 Input<br/>project-brief.md"]
+    B["📋 PM Agent<br/>Commands:<br/>*agent pm<br/>*create-prd"]
+    C["📋 Output<br/>prd.md (PRD)<br/>• Functional Requirements<br/>• Non-Functional Requirements<br/>• Epics<br/>• User Stories<br/>• Acceptance Criteria"]
+    
+    A -->|Reads| B
+    B -->|Creates| C
+    
+    style A fill:#c8e6c9
+    style B fill:#f3e5f5
+    style C fill:#ffccbc
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Project Manager</strong></td>
+                        <td>
+                            • <code>project-brief.md</code>
+                        </td>
+                        <td>
+                            <code>*agent pm</code><br/>
+                            <code>*create-prd</code>
+                        </td>
+                        <td>
+                            <strong>prd.md (PRD)</strong><br/>
+                            • Functional requirements<br/>
+                            • Non-functional requirements<br/>
+                            • Epics breakdown<br/>
+                            • Initial user stories<br/>
+                            • Acceptance criteria
+                        </td>
+                    </tr>
+                </table>
+                
+                <div class="warning-box">
+                    <strong>📌 Clarification:</strong> The PM's output is <strong>PRD (Product Requirements Document)</strong>, not BRD (Business Requirements Document). PRD is more detailed and focuses on product specifications.
+                </div>
+
+                <h3>3️⃣ Software Architect (Architect Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["📋 Input<br/>prd.md"]
+    B["🏗️ Architect Agent<br/>Commands:<br/>*agent architect<br/>*create-architecture"]
+    C["🏗️ Output<br/>architecture.md<br/>• System Design<br/>• Tech Stack<br/>• Database Schema<br/>• API Design<br/>• Security & Constraints"]
+    
+    A -->|Reads| B
+    B -->|Creates| C
+    
+    style A fill:#ffccbc
+    style B fill:#b2dfdb
+    style C fill:#b2dfdb
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Software Architect</strong></td>
+                        <td>
+                            • <code>prd.md</code>
+                        </td>
+                        <td>
+                            <code>*agent architect</code><br/>
+                            <code>*create-architecture</code><br/>
+                            <code>*create-full-stack-architect</code>
+                        </td>
+                        <td>
+                            <strong>architecture.md</strong><br/>
+                            • System architecture design<br/>
+                            • Technology stack choices<br/>
+                            • Database schema<br/>
+                            • API specifications<br/>
+                            • Security considerations
+                        </td>
+                    </tr>
+                </table>
+
+                <h3>4️⃣ UX Expert (UX Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["📋 Input<br/>prd.md<br/>architecture.md"]
+    B["🎨 UX Agent<br/>Commands:<br/>*agent ux<br/>*create-frontend-spec"]
+    C["🎨 Output<br/>frontend-spec.md<br/>• UI/UX Guidelines<br/>• Component Specs<br/>• Design System<br/>• Interactions"]
+    
+    A -->|Reads| B
+    B -->|Creates| C
+    
+    style A fill:#ffccbc
+    style B fill:#d1c4e9
+    style C fill:#d1c4e9
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>UX Expert</strong></td>
+                        <td>
+                            • <code>prd.md</code><br/>
+                            • <code>architecture.md</code>
+                        </td>
+                        <td>
+                            <code>*agent ux</code><br/>
+                            <code>*create-frontend-spec</code>
+                        </td>
+                        <td>
+                            <strong>frontend-spec.md</strong><br/>
+                            • UI/UX guidelines<br/>
+                            • Component specifications<br/>
+                            • Design system<br/>
+                            • Frontend-backend integration
+                        </td>
+                    </tr>
+                </table>
+
+                <h3>5️⃣ Product Owner (PO Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["📄 Input<br/>project-brief.md<br/>prd.md<br/>architecture.md<br/>frontend-spec.md"]
+    B["📦 PO Agent<br/>Commands:<br/>*agent po<br/>*execute-checklist-po<br/>*shard"]
+    C["📂 Output<br/>Sharded Documents<br/>• Epic files<br/>• Component docs<br/>• Validation report"]
+    
+    A -->|Validates & Shards| B
+    B -->|Creates| C
+    
+    style A fill:#ffe0b2
+    style B fill:#fff9c4
+    style C fill:#c5e1a5
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Product Owner</strong></td>
+                        <td>
+                            • <code>project-brief.md</code><br/>
+                            • <code>prd.md</code><br/>
+                            • <code>architecture.md</code><br/>
+                            • <code>frontend-spec.md</code>
+                        </td>
+                        <td>
+                            <code>*agent po</code><br/>
+                            <code>*execute-checklist-po</code><br/>
+                            <code>*shard-prd</code><br/>
+                            <code>*shard-architecture</code>
+                        </td>
+                        <td>
+                            <strong>Sharded Documents:</strong><br/>
+                            • Individual epic files<br/>
+                            • Component-specific docs<br/>
+                            • Validation checklist report<br/>
+                            • Alignment confirmation
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section" id="development-agents">
+                <h2>Development Phase - Detailed Input/Output</h2>
+                
+                <h3>🔄 Development Cycle Workflow</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph TB
+    Start["🚀 Start Development"]
+    
+    SM["🎯 Scrum Master<br/>Reviews prev notes<br/>Drafts next story"]
+    Story["📝 Story File<br/>{epic}.{story}.story.md<br/>Status: Draft"]
+    
+    Risk{"🔍 High Risk<br/>Story?"}
+    QARisk["🧪 QA Risk Assessment<br/>*risk-profile"]
+    QADesign["🧪 QA Test Design<br/>*test-design"]
+    
+    Approve{"✅ Story<br/>Approved?"}
+    
+    Dev["👨‍💻 Developer<br/>Implements code<br/>Runs tests"]
+    Code["💾 Code + Tests<br/>Status: Ready for QA"]
+    
+    QAReview["🧪 QA Review<br/>*review<br/>Comprehensive testing"]
+    Gate["📊 QA Gate Report<br/>Test results"]
+    
+    Pass{"✅ All Tests<br/>Pass?"}
+    
+    NextStory{"📋 More<br/>Stories?"}
+    Done["🎉 Epic Complete<br/>100% Coverage"]
+    
+    Start --> SM
+    SM --> Story
+    Story --> Risk
+    
+    Risk -->|Yes| QARisk
+    Risk -->|No| Approve
+    QARisk --> QADesign
+    QADesign --> Approve
+    
+    Approve -->|Yes| Dev
+    Approve -->|No| SM
+    
+    Dev --> Code
+    Code --> QAReview
+    QAReview --> Gate
+    Gate --> Pass
+    
+    Pass -->|Yes ✅| NextStory
+    Pass -->|No ❌<br/>Notes to Dev| Dev
+    
+    NextStory -->|Yes| SM
+    NextStory -->|No| Done
+    
+    style Start fill:#c8e6c9
+    style Story fill:#ffe0b2
+    style Code fill:#c5e1a5
+    style Gate fill:#ffccbc
+    style Done fill:#a5d6a7
+    style SM fill:#e1f5fe
+    style Dev fill:#f3e5f5
+    style QAReview fill:#fff9c4
+                    </div>
+                </div>
+
+                <h3>1️⃣ Scrum Master (SM Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["📂 Input<br/>Sharded Epic files<br/>Sharded Architecture<br/>Previous Dev/QA notes"]
+    B["🎯 SM Agent<br/>Commands:<br/>@sm<br/>*draft<br/>*create-next-story"]
+    C["📝 Output<br/>{epic}.{story}.story.md<br/>• Full context<br/>• Requirements<br/>• Architecture guidance<br/>• Status: Draft"]
+    
+    A -->|Reviews & Drafts| B
+    B -->|Creates| C
+    
+    style A fill:#c5e1a5
+    style B fill:#e1f5fe
+    style C fill:#ffe0b2
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Scrum Master</strong></td>
+                        <td>
+                            • Sharded epic files<br/>
+                            • Sharded architecture docs<br/>
+                            • Previous story Dev/QA notes<br/>
+                            • Task: <code>create-next-story.md</code>
+                        </td>
+                        <td>
+                            <code>@sm</code> (IDE)<br/>
+                            <code>*agent sm</code> (Web)<br/>
+                            <code>*draft</code><br/>
+                            <code>*create-next-story</code><br/>
+                            <code>Create the next development story from Epic [N]</code>
+                        </td>
+                        <td>
+                            <strong>{epic}.{story}.story.md</strong><br/>
+                            (e.g., <code>1.1.story.md</code>)<br/>
+                            • Full implementation requirements<br/>
+                            • Architectural guidance<br/>
+                            • Technical specifications<br/>
+                            • Dependencies<br/>
+                            • Status: Draft
+                        </td>
+                    </tr>
+                </table>
+                
+                <div class="info-box">
+                    <strong>🎯 SM Role:</strong> "Story Preparation Specialist" - Ensures each story is a self-contained context package with all the information the Developer needs.
+                </div>
+
+                <h3>2️⃣ Developer (Dev Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph LR
+    A["📝 Input<br/>{epic}.{story}.story.md<br/>Status: Approved"]
+    B["👨‍💻 Dev Agent<br/>Commands:<br/>@dev<br/>*develop-story"]
+    C["💾 Output<br/>• Source code<br/>• Unit tests<br/>• Integration tests<br/>• Story status: Ready for QA<br/>• Dev notes"]
+    
+    A -->|Implements| B
+    B -->|Produces| C
+    
+    style A fill:#ffe0b2
+    style B fill:#f3e5f5
+    style C fill:#c5e1a5
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>Developer</strong></td>
+                        <td>
+                            • <code>{epic}.{story}.story.md</code><br/>
+                            • Status must be: <strong>Approved</strong><br/>
+                            • Architecture documents<br/>
+                            • Previous QA notes (if fixing bugs)
+                        </td>
+                        <td>
+                            <code>@dev</code><br/>
+                            <code>*develop-story [story-number]</code><br/>
+                            <code>Develop story {epic}.{story}</code>
+                        </td>
+                        <td>
+                            <strong>Code implementation:</strong><br/>
+                            • Source code files<br/>
+                            • Unit tests<br/>
+                            • Integration tests<br/>
+                            • Story status: Ready for QA<br/>
+                            • Developer notes in story file
+                        </td>
+                    </tr>
+                </table>
+
+                <h3>3️⃣ QA Engineer (QA Agent)</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph TB
+    A["📝 Input<br/>Story file<br/>Code implementation"]
+    
+    B1["🔍 QA Risk Profile<br/>*risk-profile<br/>Assess risks"]
+    B2["📋 QA Test Design<br/>*test-design<br/>Create strategy"]
+    B3["🧪 QA Review<br/>*review<br/>Comprehensive test"]
+    
+    C1["📊 Risk Assessment<br/>Risk score<br/>PASS/FAIL/CONCERNS"]
+    C2["📋 Test Strategy<br/>Test plan<br/>Coverage map"]
+    C3["📊 QA Gate Report<br/>Test results<br/>GO/NO-GO decision<br/>QA notes"]
+    
+    A -->|High-risk story| B1
+    A -->|After draft| B2
+    A -->|Ready for QA| B3
+    
+    B1 --> C1
+    B2 --> C2
+    B3 --> C3
+    
+    style A fill:#ffe0b2
+    style B1 fill:#fff9c4
+    style B2 fill:#fff9c4
+    style B3 fill:#fff9c4
+    style C1 fill:#ffccbc
+    style C2 fill:#e1bee7
+    style C3 fill:#ffccbc
+                    </div>
+                </div>
+                
+                <table class="io-table">
+                    <tr>
+                        <th>Agent</th>
+                        <th>Input</th>
+                        <th>Commands</th>
+                        <th>Output</th>
+                    </tr>
+                    <tr>
+                        <td><strong>QA Engineer (Quinn)</strong><br/>"Test Architect"</td>
+                        <td>
+                            • <code>{epic}.{story}.story.md</code><br/>
+                            • Code implementation<br/>
+                            • Test results<br/>
+                            • Architecture constraints
+                        </td>
+                        <td>
+                            <code>@qa</code><br/>
+                            <code>*risk {story}</code> - Risk assessment<br/>
+                            <code>*design {story}</code> - Test design<br/>
+                            <code>*trace {story}</code> - Coverage check<br/>
+                            <code>*nfr {story}</code> - Quality attributes<br/>
+                            <code>*review {story}</code> - Full review<br/>
+                            <code>*gate</code> - Gate report
+                        </td>
+                        <td>
+                            <strong>QA Gate Report (.yaml):</strong><br/>
+                            • Test execution results<br/>
+                            • Coverage metrics<br/>
+                            • Risk assessment<br/>
+                            • GO/NO-GO decision<br/>
+                            • QA notes for Dev (if bugs found)<br/>
+                            • Recommendations
+                        </td>
+                    </tr>
+                </table>
+                
+                <div class="success-box">
+                    <strong>✅ QA Gates:</strong>
+                    <ul>
+                        <li><strong>PASS:</strong> All tests pass, coverage met → Next story</li>
+                        <li><strong>FAIL:</strong> Critical issues found → Back to Dev</li>
+                        <li><strong>CONCERNS:</strong> Risks ≥6 → Review needed</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section" id="detailed-commands">
+                <h2>Detailed Commands by Agent</h2>
+                
+                <h3>📊 Business Analyst Commands</h3>
+                <div class="code-block">
+# Web UI
+*analyst
+*brainstorm
+
+# IDE (similar)
+@analyst
+                </div>
+                
+                <h3>📋 Project Manager Commands</h3>
+                <div class="code-block">
+# Web UI
+*agent pm
+*create-prd          # Create PRD from project brief
+
+# IDE
+@pm
+Create PRD from project brief
+                </div>
+                
+                <h3>🏗️ Software Architect Commands</h3>
+                <div class="code-block">
+# Web UI
+*agent architect
+*create-architecture
+*create-full-stack-architect
+
+# IDE
+@architect
+Create full stack architecture
+                </div>
+                
+                <h3>🎨 UX Expert Commands</h3>
+                <div class="code-block">
+# Web UI
+*agent ux
+*create-frontend-spec    # Create frontend specification
+*create-ui-prompt        # Create prompt for UI generation tools
+
+# IDE
+@ux
+Create frontend specification
+                </div>
+                
+                <h3>📦 Product Owner Commands</h3>
+                <div class="code-block">
+# Web UI
+*agent po
+*execute-checklist-po    # Run master checklist
+*shard-prd               # Shard PRD into epic files
+*shard-architecture      # Shard architecture docs
+*validate-next-story     # Validate story draft
+
+# IDE
+@po
+Shard PRD into epics
+                </div>
+                
+                <h3>🎯 Scrum Master Commands</h3>
+                <div class="code-block">
+# Web UI
+*agent sm
+*draft                                      # Draft first story
+*create-next-story                          # Create next story
+Create the next development story from Epic 1
+
+# IDE
+@sm
+*draft
+*create-next-story
+Create the next development story from Epic 2
+                </div>
+                
+                <h3>👨‍💻 Developer Commands</h3>
+                <div class="code-block">
+# IDE
+@dev
+*develop-story 1.1              # Implement specific story
+*develop-story                  # Implement current story
+Develop story 1.1
+Fix the issues noted by QA in story 1.1
+                </div>
+                
+                <h3>🧪 QA Commands</h3>
+                <div class="code-block">
+# IDE
+@qa
+*risk {story}          # Risk assessment (before dev)
+*design {story}        # Test design strategy
+*trace {story}         # Verify test coverage
+*nfr {story}           # Check non-functional requirements
+*review {story}        # Comprehensive review
+*gate                  # Generate gate report
+
+# Examples
+@qa
+*risk 1.1              # Assess risk for story 1.1
+*review 1.1            # Full review of story 1.1
+                </div>
+                
+                <h3>📁 File Structure</h3>
+                <div class="mermaid-container">
+                    <div class="mermaid">
+graph TD
+    Root["📦 project-root/"]
+    
+    Root --> BmadCore["📂 .bmad-core/<br/><i>Core Framework</i>"]
+    Root --> Docs["📂 docs/<br/><i>Generated Documents</i>"]
+    Root --> Src["📂 src/<br/><i>Source Code</i>"]
+    
+    BmadCore --> Agents["📂 agents/<br/><i>10 Agent Definitions</i>"]
+    BmadCore --> Tasks["📂 tasks/<br/><i>40+ Executable Tasks</i>"]
+    BmadCore --> Templates["📂 templates/<br/><i>YAML Templates</i>"]
+    BmadCore --> Checklists["📂 checklists/<br/><i>Validation Procedures</i>"]
+    BmadCore --> Data["📂 data/<br/><i>Knowledge Bases</i>"]
+    
+    Agents --> AgentFiles["📄 analyst.md<br/>📄 pm.md<br/>📄 architect.md<br/>📄 ux.md<br/>📄 po.md<br/>📄 sm.md<br/>📄 dev.md<br/>📄 qa.md<br/>📄 bmad-master.md<br/>📄 bmad-orchestrator.md"]
+    
+    Tasks --> TaskFiles["📄 create-next-story.md<br/>📄 create-doc.md<br/>📄 shard-doc.md<br/>📄 risk-profile.md<br/>📄 test-design.md<br/>📄 review.md<br/>📄 ... (40+ tasks)"]
+    
+    Templates --> TemplateFiles["📄 prd-tmpl.yaml<br/>📄 architecture-tmpl.yaml<br/>📄 story-tmpl.yaml<br/>📄 brownfield-prd-tmpl.yaml"]
+    
+    Checklists --> ChecklistFiles["📄 story-dod-checklist.md<br/>📄 po-master-checklist.md"]
+    
+    Data --> DataFiles["📄 bmad-kb.md<br/>📄 elicitation-methods.md<br/>📄 technical-preferences.md"]
+    
+    Docs --> PlanningDocs["📄 project-brief.md<br/><i>From Analyst</i><br/><br/>📄 prd.md<br/><i>From PM</i><br/><br/>📄 architecture.md<br/><i>From Architect</i><br/><br/>📄 frontend-spec.md<br/><i>From UX</i>"]
+    
+    Docs --> Epics["📂 epics/<br/><i>Sharded by PO</i>"]
+    Docs --> Stories["📂 stories/<br/><i>From SM</i>"]
+    
+    Epics --> EpicFiles["📄 epic-1.md<br/>📄 epic-2.md<br/>📄 epic-3.md"]
+    
+    Stories --> StoryFiles["📄 1.1.story.md<br/>📄 1.2.story.md<br/>📄 1.3.story.md<br/>📄 2.1.story.md<br/>📄 ..."]
+    
+    Src --> CodeFiles["💻 Implementation Code<br/><i>From Dev Agent</i>"]
+    
+    style Root fill:#667eea,color:#fff
+    style BmadCore fill:#e1f5fe
+    style Docs fill:#fff9c4
+    style Src fill:#c8e6c9
+    style Agents fill:#f3e5f5
+    style Tasks fill:#f3e5f5
+    style Templates fill:#f3e5f5
+    style Checklists fill:#f3e5f5
+    style Data fill:#f3e5f5
+    style Epics fill:#ffe0b2
+    style Stories fill:#ffccbc
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <strong>📂 Directory Structure Breakdown:</strong>
+                    <ul>
+                        <li><strong>.bmad-core/</strong> - Core BMAD framework files (copied from bmad-core repository)</li>
+                        <li><strong>docs/</strong> - All planning documents and generated artifacts</li>
+                        <li><strong>src/</strong> - Your actual implementation code</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>🎯 Workflow Summary</h2>
+                
+                <div class="success-box">
+                    <h3>✅ Planning Phase Output:</h3>
+                    <ol>
+                        <li><strong>project-brief.md</strong> (Analyst) - Project overview</li>
+                        <li><strong>prd.md</strong> (PM) - Product Requirements Document</li>
+                        <li><strong>architecture.md</strong> (Architect) - System architecture</li>
+                        <li><strong>frontend-spec.md</strong> (UX) - Frontend specification</li>
+                        <li><strong>Sharded docs</strong> (PO) - Epic & component files</li>
+                    </ol>
+                </div>
+                
+                <div class="success-box">
+                    <h3>✅ Development Phase Process:</h3>
+                    <ol>
+                        <li><strong>SM drafts story</strong> → {epic}.{story}.story.md with full context</li>
+                        <li><strong>QA risk assessment</strong> (if high-risk) → Risk profile</li>
+                        <li><strong>Dev implements</strong> → Code + tests</li>
+                        <li><strong>QA reviews</strong> → QA gate report</li>
+                        <li><strong>If PASS</strong> → SM creates next story</li>
+                        <li><strong>If FAIL</strong> → Dev fixes bugs, QA retests</li>
+                        <li><strong>Repeat</strong> until 100% coverage</li>
+                    </ol>
+                </div>
+                
+                <div class="info-box">
+                    <strong>🔑 Key Principles:</strong>
+                    <ul>
+                        <li><strong>Context Engineering:</strong> Story files are self-contained context packages</li>
+                        <li><strong>Notes Flow:</strong> Dev/QA communicate through notes in story files</li>
+                        <li><strong>Zero Context Loss:</strong> SM reviews previous notes when creating new stories</li>
+                        <li><strong>Human-in-the-Loop:</strong> User approves each major decision</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

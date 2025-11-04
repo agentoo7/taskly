@@ -1,11 +1,11 @@
 """WorkspaceAuditLog model for tracking workspace actions."""
 
 import enum
+import uuid
 
 from sqlalchemy import Column, DateTime, Enum, ForeignKey, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
-import uuid
 
 from app.core.database import Base
 
@@ -33,9 +33,7 @@ class WorkspaceAuditLog(Base):
         ForeignKey("workspaces.id", ondelete="CASCADE"),
         nullable=False,
     )
-    actor_id = Column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
+    actor_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     action = Column(Enum(AuditActionEnum), nullable=False)
     resource_type = Column(String(50), nullable=False)  # "invitation", "member"
     resource_id = Column(UUID(as_uuid=True), nullable=False)
