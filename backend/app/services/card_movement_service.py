@@ -7,6 +7,7 @@ import structlog
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.board import Board
 from app.models.card import Card
@@ -59,8 +60,12 @@ class CardMovementService:
             moved_by=str(moved_by),
         )
 
-        # Get card and verify it exists
-        result = await self.db.execute(select(Card).where(Card.id == card_id))
+        # Get card with eagerly loaded relationships
+        result = await self.db.execute(
+            select(Card)
+            .where(Card.id == card_id)
+            .options(selectinload(Card.assignees), selectinload(Card.labels))
+        )
         card = result.scalar_one_or_none()
 
         if not card:

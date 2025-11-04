@@ -306,7 +306,14 @@ export default function BoardPage() {
         toast.error('Failed to move card. Changes reverted.')
       })
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update cache with server response
+      queryClient.setQueryData(['boards', boardId, 'cards'], (old: Card[] | undefined) => {
+        if (!old) return old
+        return old.map((c) => (c.id === data.id ? data : c))
+      })
+
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['boards', boardId, 'cards'] })
 
       // Show success with undo option
@@ -361,6 +368,16 @@ export default function BoardPage() {
       })
     },
     onSuccess: (data, variables) => {
+      // Update cache with server response
+      queryClient.setQueryData(['boards', boardId, 'cards'], (old: Card[] | undefined) => {
+        if (!old) return old
+        return old.map((c) => {
+          const updatedCard = data.find((d) => d.id === c.id)
+          return updatedCard || c
+        })
+      })
+
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['boards', boardId, 'cards'] })
       clearSelection()
       import('sonner').then(({ toast }) => {

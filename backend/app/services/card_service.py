@@ -1,8 +1,8 @@
 """Card service for managing cards and their metadata."""
 
+import uuid
 from datetime import datetime
 from uuid import UUID
-import uuid
 
 import structlog
 from fastapi import HTTPException, status
@@ -212,7 +212,21 @@ class CardService:
         Raises:
             HTTPException: If card not found or user not workspace member
         """
-        card = await self.get_card_by_id(card_id, user_id)
+        # Get card with eagerly loaded relationships
+        result = await self.db.execute(
+            select(Card)
+            .where(Card.id == card_id)
+            .options(selectinload(Card.assignees), selectinload(Card.labels))
+        )
+        card = result.scalar_one_or_none()
+
+        if not card:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Card not found"
+            )
+
+        # Verify user has access via board's workspace
+        await self._get_board_with_permission(card.board_id, user_id)
 
         logger.info(
             "card.update.start",
@@ -241,6 +255,7 @@ class CardService:
                 setattr(card, key, value)
 
             await self.db.commit()
+            # Refresh to get updated timestamps, relationships already loaded
             await self.db.refresh(card)
 
             logger.info(

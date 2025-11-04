@@ -16,8 +16,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Trash2, Loader2 } from 'lucide-react'
-import { Card as CardType, CardUpdate } from '@/lib/types/card'
+import { Trash2, Loader2, Save } from 'lucide-react'
+import { Card as CardType, CardUpdate, Priority } from '@/lib/types/card'
 import { PrioritySelector } from './priority-selector'
 import { DueDatePicker } from './due-date-picker'
 import { MarkdownEditor } from './markdown-editor'
@@ -61,19 +61,27 @@ const api = {
 export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId }: CardDetailModalProps) {
   const [title, setTitle] = useState(card.title)
   const [description, setDescription] = useState(card.description || '')
+  const [priority, setPriority] = useState<Priority>(card.priority)
+  const [dueDate, setDueDate] = useState<string | null>(card.due_date)
   const [storyPoints, setStoryPoints] = useState<string>(
     card.story_points !== null && card.story_points !== undefined ? String(card.story_points) : ''
   )
+  const [hasChanges, setHasChanges] = useState(false)
   const queryClient = useQueryClient()
 
-  // Reset state when card changes
+  // Reset state when card changes or modal opens
   useEffect(() => {
-    setTitle(card.title)
-    setDescription(card.description || '')
-    setStoryPoints(
-      card.story_points !== null && card.story_points !== undefined ? String(card.story_points) : ''
-    )
-  }, [card])
+    if (open) {
+      setTitle(card.title)
+      setDescription(card.description || '')
+      setPriority(card.priority)
+      setDueDate(card.due_date)
+      setStoryPoints(
+        card.story_points !== null && card.story_points !== undefined ? String(card.story_points) : ''
+      )
+      setHasChanges(false)
+    }
+  }, [card, open])
 
   const updateMutation = useMutation({
     mutationFn: (updates: CardUpdate) => api.patch(`/api/cards/${card.id}`, updates),
@@ -92,10 +100,22 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
 
       return { previousCards }
     },
-    onSuccess: () => {
-      // Refetch to ensure consistency
+    onSuccess: (data) => {
+      // Update the cache with the actual server response
+      queryClient.setQueryData(['boards', boardId, 'cards'], (old: CardType[] | undefined) => {
+        if (!old) return old
+        return old.map((c) => (c.id === card.id ? data : c))
+      })
+
+      // Force refetch to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['boards', boardId, 'cards'] })
       queryClient.invalidateQueries({ queryKey: ['cards', card.id] })
+
+      toast.success('Card updated successfully')
+      setHasChanges(false)
+
+      // Close modal after successful save
+      onOpenChange(false)
     },
     onError: (error: Error, _variables, context) => {
       // Rollback on error
@@ -118,41 +138,51 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
     },
   })
 
-  const handleFieldUpdate = (field: keyof CardUpdate, value: any) => {
-    updateMutation.mutate({ [field]: value })
-  }
-
-  const handleTitleBlur = () => {
-    if (title.trim() && title !== card.title) {
-      handleFieldUpdate('title', title.trim())
-    } else {
-      setTitle(card.title)
+  const handleSave = () => {
+    // Validate title
+    if (!title.trim()) {
+      toast.error('Card title is required')
+      return
     }
-  }
 
-  const handleDescriptionBlur = () => {
-    if (description !== card.description) {
-      handleFieldUpdate('description', description || null)
-    }
-  }
-
-  const handleStoryPointsBlur = () => {
-    const points = parseInt(storyPoints)
-    if (!isNaN(points) && points >= 0 && points <= 99) {
-      if (points !== card.story_points) {
-        handleFieldUpdate('story_points', points)
-      }
-    } else if (storyPoints === '') {
-      if (card.story_points !== null) {
-        handleFieldUpdate('story_points', null)
-      }
-    } else {
-      // Invalid input, reset
-      setStoryPoints(
-        card.story_points !== null && card.story_points !== undefined ? String(card.story_points) : ''
-      )
+    // Validate story points
+    const points = storyPoints === '' ? null : parseInt(storyPoints)
+    if (points !== null && (isNaN(points) || points < 0 || points > 99)) {
       toast.error('Story points must be between 0 and 99')
+      return
     }
+
+    // Build updates object
+    const updates: CardUpdate = {}
+
+    if (title.trim() !== card.title) {
+      updates.title = title.trim()
+    }
+
+    if (description !== (card.description || '')) {
+      updates.description = description || null
+    }
+
+    if (priority !== card.priority) {
+      updates.priority = priority
+    }
+
+    if (dueDate !== card.due_date) {
+      updates.due_date = dueDate
+    }
+
+    if (points !== card.story_points) {
+      updates.story_points = points
+    }
+
+    // Only save if there are actual changes
+    if (Object.keys(updates).length === 0) {
+      toast.info('No changes to save')
+      onOpenChange(false)
+      return
+    }
+
+    updateMutation.mutate(updates)
   }
 
   const handleDelete = () => {
@@ -160,6 +190,19 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
       deleteMutation.mutate()
     }
   }
+
+  // Track changes
+  useEffect(() => {
+    const hasChange =
+      title.trim() !== card.title ||
+      description !== (card.description || '') ||
+      priority !== card.priority ||
+      dueDate !== card.due_date ||
+      storyPoints !==
+        (card.story_points !== null && card.story_points !== undefined ? String(card.story_points) : '')
+
+    setHasChanges(hasChange)
+  }, [title, description, priority, dueDate, storyPoints, card])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -169,7 +212,6 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleTitleBlur}
             className="text-2xl font-bold border-none px-0 focus-visible:ring-0 shadow-none"
             placeholder="Card title"
           />
@@ -184,7 +226,6 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
             <MarkdownEditor
               value={description}
               onChange={setDescription}
-              onBlur={handleDescriptionBlur}
               placeholder="Add a description..."
               autoSaveKey={`card-${card.id}-description`}
             />
@@ -196,20 +237,14 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
               <Label htmlFor="priority" className="mb-2 block">
                 Priority
               </Label>
-              <PrioritySelector
-                value={card.priority}
-                onChange={(priority) => handleFieldUpdate('priority', priority)}
-              />
+              <PrioritySelector value={priority} onChange={setPriority} />
             </div>
 
             <div>
               <Label htmlFor="due-date" className="mb-2 block">
                 Due Date
               </Label>
-              <DueDatePicker
-                value={card.due_date}
-                onChange={(date) => handleFieldUpdate('due_date', date)}
-              />
+              <DueDatePicker value={dueDate} onChange={setDueDate} />
             </div>
 
             <div>
@@ -223,7 +258,6 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
                 max="99"
                 value={storyPoints}
                 onChange={(e) => setStoryPoints(e.target.value)}
-                onBlur={handleStoryPointsBlur}
                 placeholder="0-99"
               />
             </div>
@@ -252,11 +286,11 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between">
+        <DialogFooter className="flex items-center justify-between sm:justify-between">
           <Button
             variant="destructive"
             onClick={handleDelete}
-            disabled={deleteMutation.isPending}
+            disabled={deleteMutation.isPending || updateMutation.isPending}
           >
             {deleteMutation.isPending ? (
               <>
@@ -271,8 +305,30 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
             )}
           </Button>
 
-          <div className="text-xs text-muted-foreground">
-            {updateMutation.isPending && 'Saving...'}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={updateMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save & Close
+                </>
+              )}
+            </Button>
           </div>
         </DialogFooter>
       </DialogContent>
