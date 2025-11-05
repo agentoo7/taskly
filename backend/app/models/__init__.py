@@ -2,10 +2,12 @@
 
 from app.models.board import Board
 from app.models.card import Card, PriorityEnum
-from app.models.card_activity import CardActivity
+from app.models.card_activity import ActivityAction, CardActivity
 from app.models.card_assignee import CardAssignee
+from app.models.card_comment import CardComment
 from app.models.card_label import CardLabel
 from app.models.git_repository import GitRepository
+from app.models.notification import Notification, NotificationType
 from app.models.pull_request import PRStatusEnum, PullRequest
 from app.models.refresh_token import RefreshToken
 from app.models.sprint import Sprint, SprintStatusEnum
@@ -28,6 +30,10 @@ __all__ = [
     "Board",
     "Card",
     "CardActivity",
+    "ActivityAction",
+    "CardComment",
+    "Notification",
+    "NotificationType",
     "PriorityEnum",
     "CardAssignee",
     "CardLabel",
