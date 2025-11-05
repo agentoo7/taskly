@@ -83,6 +83,12 @@ class Card(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    comments = relationship(
+        "CardComment",
+        back_populates="card",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
     # Indexes
     __table_args__ = (

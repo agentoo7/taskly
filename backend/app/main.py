@@ -7,15 +7,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.api.activities import router as activities_router
 from app.api.assignees import router as assignees_router
 from app.api.auth import router as auth_router
 from app.api.boards import router as boards_router
 from app.api.cards import router as cards_router
+from app.api.comments import router as comments_router
 from app.api.health import router as health_router
 from app.api.invitations import router as invitations_router
 from app.api.labels import router as labels_router
 from app.api.members import router as members_router
 from app.api.middleware import CorrelationIDMiddleware
+from app.api.notifications import router as notifications_router
+from app.api.timeline import router as timeline_router
 from app.api.users import router as users_router
 from app.api.webhooks import router as webhooks_router
 from app.api.websockets import router as websockets_router
@@ -90,10 +94,14 @@ app.include_router(users_router, prefix="/api", tags=["users"])
 app.include_router(workspaces_router)
 app.include_router(boards_router)
 app.include_router(cards_router)
+app.include_router(comments_router, prefix="/api", tags=["comments"])
+app.include_router(activities_router, prefix="/api", tags=["activities"])
+app.include_router(timeline_router, prefix="/api", tags=["timeline"])
 app.include_router(labels_router)
 app.include_router(assignees_router)
 app.include_router(invitations_router)
 app.include_router(members_router)
+app.include_router(notifications_router, prefix="/api", tags=["notifications"])
 app.include_router(webhooks_router)
 app.include_router(websockets_router, tags=["websockets"])
 

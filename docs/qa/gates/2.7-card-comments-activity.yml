@@ -1,0 +1,95 @@
+# Quality Gate Decision for Story 2.7
+schema: 1
+story: "2.7"
+story_title: "Card Comments & Activity Timeline"
+gate: PASS
+status_reason: "ALL ISSUES RESOLVED. Comprehensive implementation with all 15 ACs delivered. All unit tests passing (9/9). Notification wiring complete, WebSocket fixed to use workspace broadcasting, TypeScript types added, API client centralized. Minor future enhancements recommended but non-blocking."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-11-04T23:50:00Z"
+
+waiver: { active: false }
+
+# All issues have been resolved
+top_issues: []
+
+# Risk assessment - ALL RESOLVED
+risk_summary:
+  totals:
+    critical: 0
+    high: 0
+    medium: 0
+    low: 0
+  recommendations:
+    must_fix: []
+    monitor: []
+
+# Quality scoring - IMPROVED
+quality_score: 95
+# 100 - 5 for minor future enhancements (rate limiting, additional tests)
+
+# Evidence of review
+evidence:
+  tests_reviewed: 9
+  tests_passing: 9
+  tests_failing: 0
+  risks_identified: 0
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    ac_gaps: []
+
+# NFR validation - ALL PASS
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Deprecated datetime fixed. Authorization checks present. Notifications working correctly. Rate limiting recommended for future but not blocking."
+  performance:
+    status: PASS
+    notes: "Pagination implemented correctly. Database indexes present. No N+1 queries detected. Efficient queries throughout."
+  reliability:
+    status: PASS
+    notes: "All 9 unit tests passing. Error handling present. WebSocket broadcasting working via workspace-level with card filtering."
+  maintainability:
+    status: PASS
+    notes: "Excellent separation of concerns. TypeScript types added. Centralized API client created. Clean code throughout."
+
+# Issues resolved during fix session
+resolved_issues:
+  - id: "TEST-001"
+    resolution: "Fixed database connection in conftest.py (localhost instead of postgres hostname). Tests now pass 9/9."
+    refs: ["backend/tests/conftest.py:20"]
+
+  - id: "FUNC-001"
+    resolution: "Wired up notification creation in comment API. Mentioned users now receive notifications."
+    refs: ["backend/app/api/comments.py:57-76"]
+
+  - id: "SEC-001"
+    resolution: "Already fixed during initial review. Using timezone-aware datetime throughout."
+    refs: ["backend/app/api/notifications.py:63,79"]
+
+  - id: "ARCH-001"
+    resolution: "Changed to workspace-level broadcasting with card_id in message. Frontend filters by card_id."
+    refs: ["backend/app/api/comments.py:86-107", "frontend/src/hooks/use-card-websocket.ts:39"]
+
+  - id: "TYPE-001"
+    resolution: "Created comprehensive TypeScript types for timeline, comments, activities."
+    refs: ["frontend/src/types/timeline.ts"]
+
+  - id: "CODE-001"
+    resolution: "Created centralized apiClient with error handling, auth, and proper typing."
+    refs: ["frontend/src/lib/api/client.ts"]
+
+# Future enhancements (non-blocking)
+recommendations:
+  future:
+    - action: "Add rate limiting to comment endpoints to prevent spam"
+      priority: "low"
+      refs: ["backend/app/api/comments.py"]
+    - action: "Add integration tests for full comment CRUD workflow"
+      priority: "medium"
+      refs: ["backend/tests/integration/"]
+    - action: "Add E2E tests for @mention notification flow"
+      priority: "medium"
+      refs: ["frontend/tests/e2e/"]
+
+# Expiry (2 weeks from review)
+expires: "2025-11-18T00:00:00Z"

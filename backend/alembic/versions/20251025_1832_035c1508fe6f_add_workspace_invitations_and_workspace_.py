@@ -17,6 +17,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Create enum types first
+    op.execute("CREATE TYPE auditactionenum AS ENUM ('create', 'update', 'delete', 'invite', 'remove')")
+    op.execute("CREATE TYPE deliverystatusenum AS ENUM ('pending', 'sent', 'failed')")
+
     # Create workspace_audit_logs table using raw SQL to avoid enum recreation issues
     op.execute("""
         CREATE TABLE workspace_audit_logs (

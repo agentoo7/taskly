@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.board import Board
 from app.models.card import Card
-from app.models.card_activity import CardActivity
+from app.models.card_activity import ActivityAction, CardActivity
 from app.models.workspace_member import WorkspaceMember
 from app.websockets.manager import manager
 
@@ -130,7 +130,7 @@ class CardMovementService:
                 activity = CardActivity(
                     card_id=card_id,
                     user_id=moved_by,
-                    action="moved",
+                    action=ActivityAction.MOVED,
                     activity_metadata={
                         "from_column": str(old_column_id),
                         "from_column_name": old_column_name,

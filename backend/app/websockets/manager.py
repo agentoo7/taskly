@@ -21,6 +21,10 @@ class ConnectionManager:
         # board_id -> set of WebSocket connections
         self.board_connections: dict[str, set[WebSocket]] = {}
 
+        # Store active connections by card_id
+        # card_id -> set of WebSocket connections
+        self.card_connections: dict[str, set[WebSocket]] = {}
+
         # Store user_id -> workspace_id mapping for cleanup
         self.user_workspaces: dict[str, set[str]] = {}
 
@@ -155,6 +159,45 @@ class ConnectionManager:
         logger.info(
             "websocket.broadcast.complete",
             board_id=board_id,
+            recipients=len(connections) - len(disconnected),
+            excluded_user=exclude_user_id,
+        )
+
+    async def broadcast_to_card(
+        self, card_id: str, message: dict, exclude_user_id: str | None = None
+    ):
+        """
+        Broadcast a message to all connections viewing a specific card.
+        Used for real-time comment/activity updates.
+        Optionally exclude the user who triggered the update.
+        """
+        if card_id not in self.card_connections:
+            return
+
+        connections = self.card_connections[card_id].copy()
+        disconnected = set()
+
+        for connection in connections:
+            # Skip if this is the user who triggered the update
+            if exclude_user_id and self.connection_users.get(connection) == exclude_user_id:
+                continue
+
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                logger.error("websocket.broadcast.failed", card_id=card_id, error=str(e))
+                disconnected.add(connection)
+
+        # Clean up disconnected connections
+        for connection in disconnected:
+            self.card_connections[card_id].discard(connection)
+
+        if not self.card_connections[card_id]:
+            del self.card_connections[card_id]
+
+        logger.info(
+            "websocket.broadcast.complete",
+            card_id=card_id,
             recipients=len(connections) - len(disconnected),
             excluded_user=exclude_user_id,
         )

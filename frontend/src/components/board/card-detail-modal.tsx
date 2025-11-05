@@ -23,6 +23,7 @@ import { DueDatePicker } from './due-date-picker'
 import { MarkdownEditor } from './markdown-editor'
 import { AssigneeSelector } from './assignee-selector'
 import { LabelSelector } from './label-selector'
+import { CardTimeline } from './card-timeline'
 import { toast } from 'sonner'
 
 interface CardDetailModalProps {
@@ -283,6 +284,12 @@ export function CardDetailModal({ card, open, onOpenChange, boardId, workspaceId
               labels={card.labels || []}
               boardId={boardId}
             />
+          </div>
+
+          {/* Activity Timeline & Comments */}
+          <div className="border-t pt-6">
+            <Label className="mb-4 block text-lg font-semibold">Activity & Comments</Label>
+            <CardTimeline cardId={card.id} />
           </div>
         </div>
 

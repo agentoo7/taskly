@@ -55,6 +55,15 @@ class User(Base):
         "CardActivity",
         back_populates="user",
     )
+    card_comments = relationship(
+        "CardComment",
+        back_populates="author",
+    )
+    notifications = relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         """String representation of User."""
