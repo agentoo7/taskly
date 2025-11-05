@@ -5,7 +5,6 @@ from collections.abc import AsyncGenerator
 import os
 
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -22,64 +21,88 @@ TEST_DATABASE_URL = os.getenv(
 )
 
 
-@pytest.fixture(scope="session")
+# Configure pytest-asyncio to use function scope by default
+pytest_plugins = ('pytest_asyncio',)
+
+
+@pytest.fixture(scope="function")
 def event_loop():
-    """Create an instance of the default event loop for the entire test session."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
+    """Create an event loop for each test function."""
+    policy = asyncio.get_event_loop_policy()
+    loop = policy.new_event_loop()
     asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
 
-@pytest_asyncio.fixture(scope="function")
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create a fresh database session for each test."""
-    # Create engine with NullPool to avoid connection pool issues
-    test_engine = create_async_engine(
-        TEST_DATABASE_URL,
-        echo=False,
-        poolclass=NullPool,  # Use NullPool to avoid connection reuse across tests
-    )
+@pytest.fixture(scope="function")
+def db_session(event_loop):
+    """Create a fresh database session for each test (sync wrapper for async fixture)."""
+    async def _create_session() -> AsyncGenerator[AsyncSession, None]:
+        # Create engine with NullPool to avoid connection pool issues
+        test_engine = create_async_engine(
+            TEST_DATABASE_URL,
+            echo=False,
+            poolclass=NullPool,
+        )
 
-    TestSessionLocal = async_sessionmaker(
-        test_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
+        TestSessionLocal = async_sessionmaker(
+            test_engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
 
-    # Create all tables
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # Create all tables
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
-    # Create session
-    async with TestSessionLocal() as session:
-        yield session
-        await session.rollback()
+        # Create and yield session
+        async with TestSessionLocal() as session:
+            yield session
+            await session.rollback()
 
-    # Drop all tables after test
-    async with test_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        # Drop all tables after test
+        async with test_engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
 
-    # Dispose of engine
-    await test_engine.dispose()
+        # Dispose of engine
+        await test_engine.dispose()
+
+    # Run async generator and return session
+    gen = _create_session()
+    session = event_loop.run_until_complete(gen.__anext__())
+    yield session
+    # Cleanup
+    try:
+        event_loop.run_until_complete(gen.__anext__())
+    except StopAsyncIteration:
+        pass
 
 
-@pytest_asyncio.fixture(scope="function")
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create an async HTTP client for testing the FastAPI app."""
+@pytest.fixture(scope="function")
+def client(db_session, event_loop):
+    """Create an async HTTP client for testing the FastAPI app (sync wrapper)."""
     from app.core.database import get_db
 
-    # Override database dependency to use test database
-    async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-        yield db_session
+    async def _create_client() -> AsyncGenerator[AsyncClient, None]:
+        # Override database dependency to use test database
+        async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
+            yield db_session
 
-    app.dependency_overrides[get_db] = override_get_db
+        app.dependency_overrides[get_db] = override_get_db
 
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
 
-    # Clear dependency overrides after test
-    app.dependency_overrides.clear()
+        # Clear dependency overrides after test
+        app.dependency_overrides.clear()
+
+    # Run async generator and return client
+    gen = _create_client()
+    client_instance = event_loop.run_until_complete(gen.__anext__())
+    yield client_instance
+    # Cleanup
+    try:
+        event_loop.run_until_complete(gen.__anext__())
+    except StopAsyncIteration:
+        pass
