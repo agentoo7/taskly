@@ -1,12 +1,14 @@
 """Pytest configuration and fixtures for testing."""
 
 import asyncio
-from collections.abc import AsyncGenerator, Generator
+from collections.abc import AsyncGenerator
+import os
 
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.database import Base
 from app.main import app
@@ -14,18 +16,19 @@ from app.models import *  # noqa: F401, F403
 
 # Test database URL (use a separate test database)
 # Use 'postgres' hostname when running inside Docker, 'localhost' when running locally
-import os
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
     "postgresql+asyncpg://taskly:taskly@localhost:5432/taskly_test"
 )
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="session")
 def event_loop():
-    """Create an instance of the default event loop for each test."""
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
+    """Create an instance of the default event loop for the entire test session."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     yield loop
     loop.close()
@@ -34,12 +37,11 @@ def event_loop():
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test."""
-    # Create engine and session factory for this test
+    # Create engine with NullPool to avoid connection pool issues
     test_engine = create_async_engine(
         TEST_DATABASE_URL,
         echo=False,
-        pool_pre_ping=True,
-        poolclass=None,  # Use NullPool to avoid connection pool issues across event loops
+        poolclass=NullPool,  # Use NullPool to avoid connection reuse across tests
     )
 
     TestSessionLocal = async_sessionmaker(
