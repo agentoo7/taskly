@@ -1,0 +1,70 @@
+# Quality Gate Decision: Story 2.6 - Advanced Card Metadata
+schema: 1
+story: "2.6"
+story_title: "Advanced Card Metadata (Assignees & Labels)"
+gate: CONCERNS
+status_reason: "Core implementation is solid with excellent test coverage (89-92% for services), but deferred features (filtering, URL params) and missing integration/E2E tests create gaps in full AC coverage."
+reviewer: "Quinn (Test Architect)"
+updated: "2025-11-04T12:00:00Z"
+
+waiver: { active: false }
+
+top_issues:
+  - id: "TEST-001"
+    severity: medium
+    finding: "Tasks 12-13 (filter bar and URL query params) deferred - ACs 13-15 not implemented"
+    suggested_action: "Create follow-up story for filtering features or implement before production"
+    suggested_owner: dev
+  - id: "TEST-002"
+    severity: medium
+    finding: "Task 15 (comprehensive test suite) incomplete - missing integration and E2E tests"
+    suggested_action: "Add integration tests for label/assignee API endpoints and E2E workflow tests"
+    suggested_owner: dev
+  - id: "CODE-001"
+    severity: low
+    finding: "Duplicate API client code in frontend components (label-manager, assignee-selector)"
+    suggested_action: "Extract to centralized API client module for DRY principle"
+    suggested_owner: dev
+  - id: "CODE-002"
+    severity: low
+    finding: "Task 5 incomplete - missing CardActivity logging and WebSocket broadcasts for assignee changes"
+    suggested_action: "Add activity logging and real-time notifications for consistency with other card operations"
+    suggested_owner: dev
+
+quality_score: 75
+expires: "2025-11-18T00:00:00Z"
+
+evidence:
+  tests_reviewed: 20
+  risks_identified: 4
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    ac_gaps: [13, 14, 15]
+
+nfr_validation:
+  security:
+    status: PASS
+    notes: "Proper authorization checks - all operations verify workspace membership. Permission validation at both service and API layers. No sensitive data exposure."
+  performance:
+    status: PASS
+    notes: "Async operations throughout. Database queries use proper indexing (workspace_id, card_id, label_id). Efficient relationships with eager loading where needed."
+  reliability:
+    status: PASS
+    notes: "Comprehensive error handling with proper exception types (ValueError, PermissionError). Duplicate prevention via unique constraints. Cascade deletes properly configured."
+  maintainability:
+    status: CONCERNS
+    notes: "Code duplication in frontend API clients. Some inline API implementation rather than using centralized client. Activity logging incomplete for assignees."
+
+recommendations:
+  immediate: []
+  future:
+    - action: "Implement filtering features (ACs 13-15) or formally defer to separate story"
+      refs: ["docs/stories/2.6.card-metadata.md"]
+    - action: "Add integration and E2E tests for label/assignee workflows"
+      refs: ["backend/tests/integration/", "frontend/tests/e2e/"]
+    - action: "Consolidate API client code into shared module"
+      refs: ["frontend/src/lib/api/client.ts"]
+    - action: "Complete activity logging and WebSocket broadcasts for assignees"
+      refs: ["backend/app/services/assignee_service.py"]
+    - action: "Consider adding rate limiting for label/assignee operations"
+      refs: ["backend/app/api/labels.py", "backend/app/api/assignees.py"]

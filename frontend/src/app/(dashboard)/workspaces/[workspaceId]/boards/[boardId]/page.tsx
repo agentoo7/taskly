@@ -252,7 +252,7 @@ export default function BoardPage() {
   }
 
   const moveCardMutation = useMutation({
-    mutationFn: ({ cardId, columnId, position }: { cardId: string; columnId: string; position: number }) =>
+    mutationFn: ({ cardId, columnId, position }: { cardId: string; columnId: string; position: number }): Promise<Card> =>
       api.patch(`/api/cards/${cardId}/move`, { column_id: columnId, position }),
     onMutate: async ({ cardId, columnId, position }) => {
       // Cancel outgoing refetches
@@ -306,7 +306,7 @@ export default function BoardPage() {
         toast.error('Failed to move card. Changes reverted.')
       })
     },
-    onSuccess: (data) => {
+    onSuccess: (data: Card) => {
       // Update cache with server response
       queryClient.setQueryData(['boards', boardId, 'cards'], (old: Card[] | undefined) => {
         if (!old) return old

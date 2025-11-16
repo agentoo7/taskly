@@ -5,7 +5,8 @@ test.describe('Authentication', () => {
     await page.goto('/login');
 
     // Check for login page elements
-    await expect(page.getByRole('heading', { name: /sign in/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /taskly/i })).toBeVisible();
+    await expect(page.getByText(/move a card, ship the code/i)).toBeVisible();
   });
 
   test('should display GitHub OAuth button', async ({ page }) => {
